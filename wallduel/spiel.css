@@ -1,0 +1,129 @@
+/* WALL DUEL – dunkler Raum, weiße Lichtkanten (wie das leuchtende Sechseck im Cover) */
+.wd { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; --c: var(--eins); }
+
+/* Mauer-Vorrat in der Zugleiste: kleiner leuchtender Balken vor der Zahl */
+.wd .zug span b { display: inline-flex; align-items: center; gap: 5px; min-width: 18px; }
+.wd .zug span b::before { content: ""; width: 3px; height: 12px; border-radius: 1px; background: #fff; box-shadow: 0 0 6px rgba(255,255,255,.9); opacity: .85; }
+
+/* ——— Brett: schwarzes Glas, Felder als leicht abgesetzte Kacheln, dazwischen die Rillen ——— */
+.wd-brett { --z: 40px; background: linear-gradient(165deg, #10141f 0%, #08090e 55%, #0c0b12 100%) !important;
+  border-color: rgba(225, 232, 255, .26) !important;
+  box-shadow: 0 50px 70px -24px rgba(0,0,0,.95), 0 0 0 1px rgba(255,255,255,.04), 0 0 80px -20px rgba(220,230,255,.22) !important; }
+.wd-brett::before { background: linear-gradient(180deg, #1a1d28, #06070a) !important; border-color: rgba(225,232,255,.16) !important; }
+.wd-brett .feld { border: 0; background: none; }
+.wd-brett .feld::before { content: ""; position: absolute; inset: 8%; border-radius: 2px; background: rgba(255,255,255,.025);
+  border: 1px solid rgba(255,255,255,.09); box-shadow: inset 0 1px 0 rgba(255,255,255,.07); transition: background .4s, box-shadow .4s, border-color .4s; }
+.wd-brett .feld.t1::before { background: linear-gradient(160deg, rgba(47,170,190,.13), rgba(47,170,190,.05)); }
+.wd-brett .feld.t2::before { background: linear-gradient(160deg, rgba(120,90,200,.14), rgba(120,90,200,.05)); }
+.wd-brett .feld.t3::before { background: linear-gradient(160deg, rgba(220,80,170,.11), rgba(220,80,170,.04)); }
+.wd-brett .feld.t4::before { background: linear-gradient(160deg, rgba(240,150,100,.10), rgba(240,150,100,.035)); }
+/* Ziel-Reihen leicht in Spielerfarbe */
+.wd-brett .feld.wd-z0::before { background: color-mix(in srgb, var(--eins) 11%, transparent); border-color: color-mix(in srgb, var(--eins) 30%, transparent); }
+.wd-brett .feld.wd-z1::before { background: color-mix(in srgb, var(--zwei) 10%, transparent); border-color: color-mix(in srgb, var(--zwei) 28%, transparent); }
+.wd-brett .feld.wd-z0 { --s: var(--eins); } .wd-brett .feld.wd-z1 { --s: var(--zwei); }
+.wd-brett .feld.wd-sieg::before { background: color-mix(in srgb, var(--s) 34%, transparent); border-color: var(--s);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--s) 65%, transparent), inset 0 0 12px color-mix(in srgb, var(--s) 50%, transparent);
+  animation: siegFeld 1.2s ease-out both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes siegFeld { 0% { opacity: .2; filter: brightness(1); } 30% { opacity: 1; filter: brightness(2); } 100% { opacity: 1; filter: none; } }
+
+/* Ziel-Rauten in der Farbe dessen, der dran ist */
+.wd-brett .feld.ziel::after { inset: 33%; border-color: var(--c); box-shadow: 0 0 10px var(--c), inset 0 0 6px var(--c); }
+.wd-brett .feld.ziel::before { background: color-mix(in srgb, var(--c) 14%, transparent); border-color: color-mix(in srgb, var(--c) 55%, transparent);
+  box-shadow: inset 0 0 14px color-mix(in srgb, var(--c) 30%, transparent); }
+
+/* Ziellinien an den Brettkanten */
+.wd-linie { position: absolute; left: 4%; right: 4%; height: 2px; pointer-events: none; transform: translateZ(1px); opacity: .75; transition: opacity .4s; }
+.wd-linie.l0 { top: -1px; background: linear-gradient(90deg, transparent, var(--eins) 20%, color-mix(in srgb, var(--eins) 40%, #fff) 50%, var(--eins) 80%, transparent); box-shadow: 0 0 12px var(--eins); }
+.wd-linie.l1 { bottom: -1px; background: linear-gradient(90deg, transparent, var(--zwei) 20%, color-mix(in srgb, var(--zwei) 40%, #fff) 50%, var(--zwei) 80%, transparent); box-shadow: 0 0 12px var(--zwei); }
+.wd-linie.sieg { opacity: 1; left: 0; right: 0; height: 4px; animation: siegLinie .6s ease-in-out 5 alternate both; }
+@keyframes siegLinie { from { filter: brightness(1); } to { filter: brightness(1.8) drop-shadow(0 0 10px #fff); } }
+
+/* ——— 3D-Ebene: Mauern + Figuren ——— */
+.wd-ebene { position: absolute; inset: 0; transform-style: preserve-3d; pointer-events: none; }
+
+.wd-stand { position: absolute; left: 0; top: 0; width: calc(100% / 7); height: calc(100% / 7); transform-style: preserve-3d;
+  transition: transform .52s cubic-bezier(.45, 0, .25, 1); }
+.wd-stand.s0 { --f: var(--eins); } .wd-stand.s1 { --f: var(--zwei); }
+.wd-hupf { position: absolute; inset: 0; transform-style: preserve-3d; }
+.wd-stand.hupft .wd-hupf { animation: hupf .52s cubic-bezier(.3, 0, .3, 1); }
+@keyframes hupf { 0% { transform: translateZ(0); } 45% { transform: translateZ(calc(var(--z) * .75)); } 80% { transform: translateZ(calc(var(--z) * .04)); } 100% { transform: translateZ(0); } }
+.wd-schein { position: absolute; inset: 6%; border-radius: 50%; transform: translateZ(.5px);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--f) 55%, transparent), color-mix(in srgb, var(--f) 16%, transparent) 60%, transparent); }
+.wd-stand .figur svg { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--f) 55%, transparent)) drop-shadow(0 6px 5px rgba(0,0,0,.7)); }
+
+/* Mauer = leuchtender Quader: Deckfläche + drei sichtbare Seiten */
+.wd-mauer { position: absolute; transform-style: preserve-3d; --h: calc(var(--z) * .5); --licht: #ffffff; --glas: rgba(28, 32, 46, .96); }
+.wd-mauer.h { height: calc(var(--z) * .18); margin-top: calc(var(--z) * -.09); }
+.wd-mauer.v { width: calc(var(--z) * .18); margin-left: calc(var(--z) * -.09); }
+.wd-mauer i { position: absolute; display: block; }
+.wd-mauer .f-o { inset: 0; transform: translateZ(var(--h)); border-radius: 1px;
+  background: linear-gradient(var(--licht), var(--licht)) center / calc(100% - 4px) calc(100% - 4px) no-repeat, color-mix(in srgb, var(--licht) 70%, #8c96b4);
+  box-shadow: 0 0 calc(var(--z) * .22) color-mix(in srgb, var(--licht) 85%, transparent), 0 0 calc(var(--z) * .5) color-mix(in srgb, var(--licht) 30%, transparent); }
+.wd-mauer .f-v { left: 0; right: 0; top: 100%; height: var(--h); transform-origin: top; transform: rotateX(90deg);
+  background: linear-gradient(180deg, var(--glas) 0%, color-mix(in srgb, var(--licht) 22%, var(--glas)) 70%, color-mix(in srgb, var(--licht) 80%, transparent) 94%, var(--licht)); }
+.wd-mauer .f-l { top: 0; bottom: 0; right: 100%; width: var(--h); transform-origin: right; transform: rotateY(90deg);
+  background: linear-gradient(270deg, var(--glas) 0%, color-mix(in srgb, var(--licht) 16%, var(--glas)) 70%, color-mix(in srgb, var(--licht) 70%, transparent) 94%, var(--licht)); }
+.wd-mauer .f-r { top: 0; bottom: 0; left: 100%; width: var(--h); transform-origin: left; transform: rotateY(-90deg);
+  background: linear-gradient(90deg, var(--glas) 0%, color-mix(in srgb, var(--licht) 16%, var(--glas)) 70%, color-mix(in srgb, var(--licht) 70%, transparent) 94%, var(--licht)); }
+/* Lichtschein auf dem Brett rund um die Mauer */
+.wd-mauer::before { content: ""; position: absolute; transform: translateZ(.4px); pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--licht) 26%, transparent), transparent); }
+.wd-mauer.h::before { left: -12%; right: -12%; top: -260%; bottom: -260%; }
+.wd-mauer.v::before { top: -12%; bottom: -12%; left: -260%; right: -260%; }
+
+.wd-mauer.neu { animation: wachsen .7s cubic-bezier(.2, .9, .3, 1.2) both; }
+.wd-mauer.neu::before { animation: blitz .9s ease-out both; }
+@keyframes wachsen { from { transform: scale3d(.92, .92, .02); } to { transform: none; } }
+@keyframes blitz { 0% { opacity: 0; } 30% { opacity: 1; filter: brightness(2.4); } 100% { opacity: 1; } }
+
+/* Vorschau: Deckkraft nur auf den Flächen (opacity am Quader selbst würde ihn flach machen) */
+.wd-mauer.vorschau i, .wd-mauer.vorschau::before { animation: vorschau 1.4s ease-in-out infinite; }
+.wd-mauer.vorschau.ungueltig { --licht: #ff4d5e; --glas: rgba(60, 14, 22, .92); }
+@keyframes vorschau { 0%, 100% { opacity: .85; } 50% { opacity: .4; } }
+
+/* ——— Mauer-Vorrat auf Glasablagen ——— */
+.wd-ablage { position: absolute; left: 7%; right: 7%; height: calc(var(--z) * .62); display: flex; justify-content: space-evenly; align-items: center;
+  transform-style: preserve-3d; pointer-events: none; }
+.wd-ablage::before { content: ""; position: absolute; inset: 0; border: 1px solid rgba(255,255,255,.1); border-radius: 3px;
+  background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.01)); }
+.wd-ablage::after { content: ""; position: absolute; left: 30%; right: 30%; height: 2px; background: var(--f); box-shadow: 0 0 10px var(--f); opacity: .7; }
+.wd-ablage.a0 { --f: var(--eins); top: calc(100% + var(--z) * .42); }
+.wd-ablage.a0::after { bottom: -1px; }
+.wd-ablage.a1 { --f: var(--zwei); bottom: calc(100% + var(--z) * .42); }
+.wd-ablage.a1::after { top: -1px; }
+.wd-mauer.klein { position: relative; flex: none; width: calc(var(--z) * .66); height: calc(var(--z) * .14); margin: 0; --h: calc(var(--z) * .3);
+  --licht: color-mix(in srgb, var(--f) 30%, #fff); transition: transform .5s cubic-bezier(.5, 0, .7, .4), opacity .5s; }
+.wd-mauer.klein::before { display: none; }
+.wd-mauer.klein .f-o { box-shadow: 0 0 calc(var(--z) * .14) color-mix(in srgb, var(--licht) 70%, transparent); }
+.wd-mauer.klein.weg { transform: translateZ(calc(var(--z) * .8)) scale3d(.4, .4, .4); opacity: 0; }
+
+/* ——— Kreuzungspunkte im Mauer-Modus ——— */
+.wd-punkte { position: absolute; inset: 0; transform: translateZ(2px); display: none; }
+.wd.mauermodus .wd-punkte { display: block; }
+.wd-kreuz { position: absolute; }
+.wd-kreuz i { position: absolute; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; transform: rotate(45deg); background: rgba(255,255,255,.55);
+  box-shadow: 0 0 6px rgba(255,255,255,.8); transition: transform .2s, background .2s; animation: kreuzRein .35s ease-out both; }
+.wd-kreuz.an i { background: #fff; transform: rotate(45deg) scale(1.6); }
+@keyframes kreuzRein { from { opacity: 0; transform: rotate(45deg) scale(.2); } }
+.wd.mauermodus .wd-brett .feld::before { border-color: rgba(255,255,255,.04); }
+
+/* ——— Knöpfe ——— */
+.wd-leiste { gap: 12px; min-height: 60px; }
+.wd-leiste .knopf { min-width: 64px; padding: 0 20px; }
+.wd-leiste .knopf svg { width: 24px; height: 24px; }
+.wd-mk b { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wd-mk.an { border-color: #fff; background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.06)); box-shadow: 0 0 22px -4px rgba(255,255,255,.8); }
+.wd-dreh, .wd-ok { display: none !important; }
+.wd.mauermodus .wd-dreh, .wd.mauermodus .wd-ok { display: inline-flex !important; animation: knopfRein .3s cubic-bezier(.2,.9,.3,1.2) both; }
+.wd.mauermodus .wd-ok { animation-delay: 60ms; }
+@keyframes knopfRein { from { opacity: 0; transform: translateX(-12px); } }
+
+/* ——— PC: Ablagen links (Du) und rechts (KI), Mauern senkrecht ——— */
+#app.breit .wd { max-width: 1100px; margin: 0 auto; width: 100%; }
+#app.breit .wd-leiste { padding-top: 14px; }
+#app.breit .wd-ablage { left: auto; right: auto; top: 10%; bottom: 10%; height: auto; width: calc(var(--z) * .62); flex-direction: column; }
+#app.breit .wd-ablage.a0 { right: calc(100% + var(--z) * .5); }
+#app.breit .wd-ablage.a1 { left: calc(100% + var(--z) * .5); }
+#app.breit .wd-ablage::after { left: auto; right: auto; top: 30%; bottom: 30%; width: 2px; height: auto; }
+#app.breit .wd-ablage.a0::after { left: -1px; } #app.breit .wd-ablage.a1::after { right: -1px; }
+#app.breit .wd-mauer.klein { width: calc(var(--z) * .14); height: calc(var(--z) * .66); }

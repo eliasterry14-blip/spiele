@@ -1,0 +1,86 @@
+/* TOWER TACTICS – rauchiges Glas, Kristalle mit glühender Spitze, warmes Bernstein-Licht */
+.tt { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; --c: var(--eins); }
+
+/* ——— Brett ——— */
+.tt-brett { --z: 50px; background: linear-gradient(160deg, #17110b 0%, #0a0806 55%, #100c10 100%) !important;
+  border-color: rgba(232, 162, 76, .38) !important;
+  box-shadow: 0 50px 70px -24px rgba(0,0,0,.95), 0 0 0 1px rgba(255,190,110,.06), 0 0 90px -20px rgba(232,162,76,.3) !important; }
+.tt-brett::before { background: linear-gradient(180deg, #2a1c0f, #070504) !important; border-color: rgba(232,162,76,.25) !important; }
+.tt-brett .feld { border: 0; background: none; }
+.tt-brett .feld::before { content: ""; position: absolute; inset: 6%; border-radius: 2px; border: 1px solid rgba(255, 220, 170, .09);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04); transition: background .45s, border-color .45s, box-shadow .45s; transition-delay: var(--d, 0ms); }
+.tt-brett .feld.tt-a::before { background: rgba(255, 200, 140, .035); }
+.tt-brett .feld.tt-b::before { background: rgba(255, 255, 255, .02); }
+/* beherrschte Felder in Spielerfarbe */
+.tt-brett .feld.b0::before { background: linear-gradient(160deg, color-mix(in srgb, var(--eins) 34%, transparent), color-mix(in srgb, var(--eins) 16%, transparent));
+  border-color: color-mix(in srgb, var(--eins) 55%, transparent); box-shadow: inset 0 0 14px color-mix(in srgb, var(--eins) 22%, transparent); }
+.tt-brett .feld.b1::before { background: linear-gradient(160deg, color-mix(in srgb, var(--zwei) 34%, transparent), color-mix(in srgb, var(--zwei) 16%, transparent));
+  border-color: color-mix(in srgb, var(--zwei) 55%, transparent); box-shadow: inset 0 0 14px color-mix(in srgb, var(--zwei) 22%, transparent); }
+.tt-brett .feld.turm::before { box-shadow: inset 0 0 18px color-mix(in srgb, var(--eins) 30%, transparent); }
+.tt-brett .feld.b1.turm::before { box-shadow: inset 0 0 18px color-mix(in srgb, var(--zwei) 30%, transparent); }
+/* neutral = grau schraffiert */
+.tt-brett .feld.neutral::before { background: repeating-linear-gradient(135deg, rgba(220, 220, 230, .16) 0 1.5px, transparent 1.5px 6px), rgba(160, 160, 175, .07);
+  border-color: rgba(220, 220, 235, .2); }
+/* verbotene Felder für den, der dran ist: nur dunkler */
+.tt-brett .feld::after { content: ""; position: absolute; inset: 6%; border-radius: 2px; background: #000; opacity: 0; pointer-events: none; transition: opacity .35s; }
+.tt-brett .feld.zu::after { opacity: .62; }
+.tt-brett .feld.wahl::before { border-color: var(--c); box-shadow: inset 0 0 16px color-mix(in srgb, var(--c) 45%, transparent), 0 0 12px color-mix(in srgb, var(--c) 50%, transparent); }
+@media (hover: hover) {
+  .tt-brett .feld:not(.zu):not(.turm):hover::before { border-color: color-mix(in srgb, var(--c) 70%, transparent); }
+}
+
+/* schräger Lichtstrahl über dem Brett (wie im Cover) */
+.tt-licht { position: absolute; inset: 0; pointer-events: none; transform: translateZ(.5px);
+  background: linear-gradient(118deg, transparent 22%, rgba(255, 196, 120, .07) 38%, rgba(255, 210, 150, .1) 44%, transparent 60%); }
+
+/* ——— Kristall-Türme ——— */
+.tt-turm { width: 70%; }
+.tt-turm svg { filter: drop-shadow(0 5px 5px rgba(0,0,0,.75)); }
+.tt-turm.neu { animation: fallen .38s cubic-bezier(.55, 0, .9, .5) both; }
+@keyframes fallen { from { transform: translateX(-50%) translateZ(calc(var(--z) * 2.4)) rotateX(calc(var(--kipp) * -1)); opacity: 0; }
+  30% { opacity: 1; } to { transform: translateX(-50%) translateZ(1px) rotateX(calc(var(--kipp) * -1)); } }
+.tt-turm:not(.neu):not(.geist) { animation: landen .35s cubic-bezier(.2, .9, .3, 1.4); }
+@keyframes landen { from { transform: translateX(-50%) translateZ(1px) rotateX(calc(var(--kipp) * -1)) scale(1.1, .86); } }
+.tt-turm.geist { opacity: .42; animation: geist 1.3s ease-in-out infinite; }
+@keyframes geist { 50% { opacity: .25; } }
+.tt-turm.sieg svg { animation: siegGlut .7s ease-in-out 4 alternate both; animation-delay: calc(var(--i, 0) * 60ms); }
+@keyframes siegGlut { to { filter: brightness(1.5) drop-shadow(0 0 14px rgba(255, 220, 160, .8)); } }
+
+/* ——— Lichtstrahlen ——— */
+.tt-strahlen { position: absolute; inset: 0; transform: translateZ(1.5px); pointer-events: none; }
+.tt-strahl { position: absolute; --f: var(--eins); --dick: max(2px, calc(var(--z) * .05)); animation: strahl var(--dauer, 300ms) cubic-bezier(.3, 0, .2, 1) both, strahlWeg .5s .6s ease-in forwards; }
+.tt-strahl.p1 { --f: var(--zwei); }
+.tt-strahl.r, .tt-strahl.l { height: var(--dick); margin-top: calc(var(--dick) / -2); }
+.tt-strahl.u, .tt-strahl.o { width: var(--dick); margin-left: calc(var(--dick) / -2); }
+.tt-strahl.r { transform-origin: left; background: linear-gradient(90deg, #fff, var(--f) 22%, color-mix(in srgb, var(--f) 30%, transparent)); --s: scaleX(0); }
+.tt-strahl.l { transform-origin: right; background: linear-gradient(270deg, #fff, var(--f) 22%, color-mix(in srgb, var(--f) 30%, transparent)); --s: scaleX(0); }
+.tt-strahl.u { transform-origin: top; background: linear-gradient(180deg, #fff, var(--f) 22%, color-mix(in srgb, var(--f) 30%, transparent)); --s: scaleY(0); }
+.tt-strahl.o { transform-origin: bottom; background: linear-gradient(0deg, #fff, var(--f) 22%, color-mix(in srgb, var(--f) 30%, transparent)); --s: scaleY(0); }
+.tt-strahl { box-shadow: 0 0 calc(var(--z) * .18) var(--f), 0 0 4px #fff; border-radius: 2px; }
+@keyframes strahl { from { transform: var(--s); } to { transform: none; } }
+@keyframes strahlWeg { to { opacity: 0; } }
+/* Vorschau: feine, ruhige Linie */
+.tt-strahl.vor { animation: vorStrahl .25s ease-out both; opacity: .5; box-shadow: none; --dick: 1.5px;
+  background: repeating-linear-gradient(90deg, var(--f) 0 6px, transparent 6px 10px); }
+.tt-strahl.vor.u, .tt-strahl.vor.o { background: repeating-linear-gradient(180deg, var(--f) 0 6px, transparent 6px 10px); }
+@keyframes vorStrahl { from { opacity: 0; } }
+
+/* ——— Macht-Balken ——— */
+.tt-waage { position: relative; flex: none; display: flex; gap: 3px; width: min(78%, 420px); height: 6px; margin: 4px auto 0; }
+.tt-waage i { display: block; flex: 0 1 0; min-width: 0; transition: flex-grow .7s cubic-bezier(.3, 0, .2, 1); transform: skewX(-30deg); }
+.tt-waage .w0 { background: linear-gradient(90deg, color-mix(in srgb, var(--eins) 60%, #000), var(--eins)); box-shadow: 0 0 10px color-mix(in srgb, var(--eins) 60%, transparent); }
+.tt-waage .w1 { background: linear-gradient(90deg, var(--zwei), color-mix(in srgb, var(--zwei) 60%, #000)); box-shadow: 0 0 10px color-mix(in srgb, var(--zwei) 60%, transparent); }
+.tt-waage .wn { background: repeating-linear-gradient(135deg, rgba(255,255,255,.22) 0 1px, transparent 1px 4px), rgba(255,255,255,.05); }
+.tt-waage::before, .tt-waage::after { content: ""; position: absolute; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; transform: rotate(45deg); opacity: 0; transition: opacity .4s; }
+.tt-waage::before { left: -14px; background: var(--eins); box-shadow: 0 0 8px var(--eins); }
+.tt-waage::after { right: -14px; background: var(--zwei); box-shadow: 0 0 8px var(--zwei); }
+.tt-waage.vorne0::before, .tt-waage.vorne1::after { opacity: 1; }
+
+/* ——— Zugleiste + Knopf ——— */
+.tt .zug span b { min-width: 20px; text-align: right; font-size: 15px; }
+.tt-leiste { min-height: 60px; }
+.tt-leiste .knopf { min-width: 170px; }
+
+/* ——— PC ——— */
+#app.breit .tt { max-width: 1000px; margin: 0 auto; width: 100%; }
+#app.breit .tt-leiste { padding-top: 14px; }
