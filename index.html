@@ -29,7 +29,7 @@
 <div class="linie"></div>
 <div class="gitter" id="g"></div>
 <script>
-  const SPIELE = [['nim', 'NIM'], ['codebreaker', 'CODEBREAKER'], ['minefield', 'MINEFIELD PRO'], ['wallduel', 'WALL DUEL'], ['towertactics', 'TOWER TACTICS'],
+  const SPIELE = [['navalchess', 'NAVAL CHESS'], ['nim', 'NIM'], ['codebreaker', 'CODEBREAKER'], ['minefield', 'MINEFIELD PRO'], ['wallduel', 'WALL DUEL'], ['towertactics', 'TOWER TACTICS'],
     ['gridwars', 'GRID WARS'], ['numberduel', 'NUMBER DUEL'], ['lineup', 'LINEUP'], ['logicduel', 'LOGIC DUEL'], ['shards', 'SHARDS']];
   // Spiele, die (noch) nicht hochgeladen sind, verschwinden einfach
   document.getElementById('g').innerHTML = SPIELE.map(([id, name], i) => `<a href="${id}/" style="--i:${i}"><img src="${id}/icon-180.png" alt="" onerror="this.parentNode.remove()"><b>${name}</b></a>`).join('');
