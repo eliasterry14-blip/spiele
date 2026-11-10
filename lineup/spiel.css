@@ -1,0 +1,115 @@
+/* LINEUP – violett-weißes Neon: gekipptes Brett mit Kartenfeldern, leuchtende Steine, gefächerte 3D-Karten */
+#s-spiel::before { background: radial-gradient(80% 55% at 50% 40%, #1a1230 0%, #0b0814 55%, #050407 100%) !important; }
+
+.lu { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; }
+.lu .zug { margin: 0 0 4px; }
+.lu-rest { --c: #c9b6ff !important; color: #e6dcff !important; }
+.lu-rest em { width: 9px; height: 12px; border: 1px solid #c9b6ff; border-radius: 2px; box-shadow: 2px -2px 0 -1px #0b0814, 2px -2px 0 0 rgba(201,182,255,.55); }
+
+/* ——— Brett ——— */
+.lu-feld { position: relative; display: flex; flex-direction: column; min-height: 0; }
+.lu-brett { background: linear-gradient(135deg, #1b1633 0%, #141026 50%, #22143a 100%) !important; border-color: rgba(190,160,255,.38) !important;
+  box-shadow: 0 40px 70px -24px rgba(0,0,0,.9), 0 0 0 1px rgba(180,140,255,.12), 0 0 70px -16px rgba(150,100,255,.45) !important; }
+.lu-brett::before { background: linear-gradient(180deg, #2c1f52, #0e0a1c) !important; border-color: rgba(190,160,255,.25) !important; }
+.lu-brett .feld { border: 0; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.09); background: color-mix(in srgb, var(--s) 6%, transparent); }
+.lu-brett .feld:nth-child(16n+1), .lu-brett .feld:nth-child(16n+3), .lu-brett .feld:nth-child(16n+5), .lu-brett .feld:nth-child(16n+7),
+.lu-brett .feld:nth-child(16n+10), .lu-brett .feld:nth-child(16n+12), .lu-brett .feld:nth-child(16n+14), .lu-brett .feld:nth-child(16n+16) { background: color-mix(in srgb, var(--s) 11%, rgba(255,255,255,.015)); }
+.lu-f { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--fg, 40px) * .02); pointer-events: none; color: var(--s); }
+.lu-f svg { width: calc(var(--fg, 40px) * .3); height: calc(var(--fg, 40px) * .3); fill: currentColor; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--s) 60%, transparent)); }
+.lu-f b { font-size: calc(var(--fg, 40px) * .3); line-height: 1; font-weight: 600; color: #fff; opacity: .88; font-variant-numeric: tabular-nums; }
+.lu-brett .feld.hell { background: color-mix(in srgb, var(--s) 45%, transparent); box-shadow: inset 0 0 0 1.5px #fff, 0 0 18px color-mix(in srgb, var(--s) 70%, transparent); }
+
+/* Ziele der gewählten Karte */
+.lu-brett .feld.ziel { background: color-mix(in srgb, var(--s) 30%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--s) 80%, #fff); }
+.lu-brett .feld.ziel::after { border-color: #fff; box-shadow: 0 0 10px #fff; inset: 18%; }
+.lu-brett.joker-wahl .feld.ziel { background: color-mix(in srgb, var(--s) 16%, rgba(255,255,255,.05)); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.4); animation: luJokerPuls 1.6s ease-in-out infinite; }
+.lu-brett.joker-wahl .feld.ziel::after { display: none; }
+@keyframes luJokerPuls { 50% { box-shadow: inset 0 0 0 1px rgba(255,255,255,.75), inset 0 0 12px rgba(220,200,255,.35); } }
+.lu-brett .feld.bannziel { cursor: pointer; }
+.lu-brett .feld.bannziel .lu-stein { animation: luBannPuls 1s ease-in-out infinite; }
+@keyframes luBannPuls { 50% { box-shadow: 0 0 0 3px #ff5a6e, 0 0 22px 4px #ff5a6e; transform: translateZ(6px) scale(.9); } }
+
+/* ——— Steine: leuchtende 3D-Scheiben mit Plopp-Fall ——— */
+.lu-brett .lu-stein { inset: 11%; animation: luFall .62s cubic-bezier(.3,.9,.35,1) both;
+  box-shadow: 0 0 16px -2px var(--c), 0 calc(var(--fg, 40px) * .07) 0 color-mix(in srgb, var(--c) 38%, #000), 0 calc(var(--fg, 40px) * .1) 8px rgba(0,0,0,.6); }
+.lu-stein::after { content: ""; position: absolute; inset: 22%; border-radius: 50%; border: 1px solid rgba(255,255,255,.55); background: radial-gradient(circle at 40% 35%, rgba(255,255,255,.35), transparent 60%); }
+@keyframes luFall {
+  0% { transform: translateZ(170px) scale(1.2); opacity: 0; }
+  45% { opacity: 1; }
+  70% { transform: translateZ(0) scale(1.08, .92); }
+  85% { transform: translateZ(9px) scale(.98); }
+  100% { transform: translateZ(2px); }
+}
+.lu-brett .feld.plopp::before { content: ""; position: absolute; inset: 6%; border-radius: 50%; border: 2px solid #fff; opacity: 0; pointer-events: none; animation: luRing .7s .38s ease-out; }
+@keyframes luRing { from { opacity: .9; transform: scale(.6); } to { opacity: 0; transform: scale(1.6); } }
+.lu-brett .feld.neu .lu-stein::after { border-color: #fff; box-shadow: 0 0 8px #fff; }
+.lu-brett .lu-stein.weg { animation: luWeg .62s ease-in forwards; }
+@keyframes luWeg { 0% { transform: translateZ(2px); filter: none; } 30% { transform: translateZ(18px) scale(1.15); filter: brightness(2) hue-rotate(-40deg); } 100% { transform: translateZ(90px) scale(.2); opacity: 0; filter: blur(6px); } }
+.lu-brett .lu-stein.welle { animation: luWelle 1.3s ease-in-out infinite; animation-delay: calc(var(--n) * 130ms); }
+@keyframes luWelle { 0%, 100% { transform: translateZ(2px); filter: brightness(1); } 35% { transform: translateZ(12px) scale(1.14); filter: brightness(1.9) drop-shadow(0 0 10px var(--c)); } }
+.lu-strahl { position: absolute; height: 4px; margin-top: -2px; transform-origin: 0 50%; transform: translateZ(14px); pointer-events: none; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--c) 10%, #fff 50%, var(--c) 90%, transparent) 0 0 / 200% 100%;
+  box-shadow: 0 0 14px var(--c), 0 0 30px var(--c); animation: luStrahl 1.2s ease-out both, luLauf 1.3s linear .9s infinite; }
+@keyframes luStrahl { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes luLauf { to { background-position: -200% 0; } }
+
+/* ——— Unten: Stapel · Hand · Ablage ——— */
+.lu-unten { position: relative; display: grid; grid-template-columns: 56px 1fr 56px; align-items: end; gap: 8px; height: 138px; padding: 0 2px; }
+.lu-hand { position: relative; height: 100%; perspective: 800px; }
+.lu-karte { --w: 68px; position: absolute; left: 50%; bottom: 6px; width: var(--w); height: calc(var(--w) * 1.44); margin-left: calc(var(--w) / -2); border-radius: 9px; cursor: pointer;
+  background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--s) 16%, #1c1730), #0c0a16 70%);
+  border: 1px solid color-mix(in srgb, var(--s) 60%, transparent); color: var(--s);
+  box-shadow: 0 14px 26px -10px rgba(0,0,0,.9), inset 0 0 0 1px rgba(255,255,255,.04), inset 0 -18px 30px -18px color-mix(in srgb, var(--s) 50%, transparent);
+  transform-origin: 50% 120%; transform: translateX(var(--x, 0)) translateY(var(--y, 0)) rotate(var(--r, 0)) rotateX(8deg);
+  transition: transform .32s cubic-bezier(.2,.9,.3,1.25), box-shadow .25s, filter .3s, opacity .3s; }
+.lu-karte .mitte { position: absolute; left: 50%; top: 50%; width: 46%; aspect-ratio: 1; transform: translate(-50%, -50%); filter: drop-shadow(0 0 8px color-mix(in srgb, var(--s) 70%, transparent)); }
+.lu-karte .mitte svg { width: 100%; height: 100%; fill: currentColor; }
+.lu-karte .ecke { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1; }
+.lu-karte .ecke b { font-size: 15px; font-weight: 700; color: #fff; }
+.lu-karte .ecke svg { width: 9px; height: 9px; fill: currentColor; }
+.lu-karte .ecke.o { left: 6px; top: 6px; }
+.lu-karte .ecke.u { right: 6px; bottom: 6px; transform: rotate(180deg); }
+.lu-karte svg.b { fill: none; }
+.lu-karte.lu-joker { background: radial-gradient(120% 90% at 50% 10%, #3b2a6e, #120d24 70%); }
+.lu-karte.lu-joker .mitte svg { fill: url(#luJoker); fill: #fff; filter: drop-shadow(0 0 6px #c49bff) drop-shadow(0 0 14px #8f5bff); }
+.lu-karte.lu-bann { background: radial-gradient(120% 90% at 50% 10%, #4a1626, #170a10 70%); }
+.lu-karte.lu-joker .ecke svg, .lu-karte.lu-bann .ecke svg { width: 12px; height: 12px; }
+.lu-karte.an { transform: translateX(var(--x, 0)) translateY(calc(var(--y, 0) - 26px)) rotate(0deg) rotateX(0deg) scale(1.08);
+  border-color: var(--s); box-shadow: 0 0 0 1px var(--s), 0 0 26px -2px color-mix(in srgb, var(--s) 75%, transparent), 0 18px 30px -10px rgba(0,0,0,.9); z-index: 9 !important; }
+.lu-karte.tot { filter: grayscale(.85) brightness(.55); }
+.lu-karte.tot::after { content: ""; position: absolute; left: 14%; right: 14%; top: 50%; height: 1px; background: rgba(255,255,255,.75); transform: rotate(-55deg); }
+.lu-karte.tot.an { filter: grayscale(.5) brightness(.8); }
+@media (hover: hover) { .lu-karte:not(.an):hover { transform: translateX(var(--x, 0)) translateY(calc(var(--y, 0) - 8px)) rotate(var(--r, 0)) rotateX(4deg); } }
+
+/* Stapel (verdeckt) und Ablage (zuletzt gespielte Karte) */
+.lu-stapel, .lu-ablage { position: relative; width: 52px; height: 75px; margin-bottom: 10px; }
+.lu-ruecken { position: absolute; inset: 0; border-radius: 7px; background: linear-gradient(160deg, #2a1c52, #100b20); border: 1px solid rgba(196,155,255,.5);
+  display: grid; place-items: center; overflow: hidden; box-shadow: 0 6px 12px -6px #000; }
+.lu-ruecken svg { width: 60%; fill: none; stroke: #d9c6ff; stroke-width: 1.4; filter: drop-shadow(0 0 4px #b48cff); }
+.lu-ruecken i { position: absolute; top: 50%; width: 3px; height: 3px; border-radius: 50%; background: #fff; box-shadow: 0 0 5px #c49bff; }
+.lu-ruecken i:nth-of-type(1) { left: 30%; margin-top: 3px; } .lu-ruecken i:nth-of-type(2) { left: 40%; margin-top: 1.5px; } .lu-ruecken i:nth-of-type(3) { left: 50%; }
+.lu-ruecken i:nth-of-type(4) { left: 60%; margin-top: -1.5px; } .lu-ruecken i:nth-of-type(5) { left: 70%; margin-top: -3px; }
+.lu-stapel .lu-ruecken:nth-child(1) { transform: translate(4px, 4px); opacity: calc(var(--n, 3) >= 3); }
+.lu-stapel .lu-ruecken:nth-child(2) { transform: translate(2px, 2px); opacity: calc(var(--n, 3) >= 2); }
+.lu-stapel > b { position: absolute; left: 0; right: 0; bottom: -18px; text-align: center; font-size: 12px; font-weight: 700; color: #d9c6ff; font-variant-numeric: tabular-nums; }
+.lu-stapel.leer .lu-ruecken { opacity: 0 !important; }
+.lu-stapel.leer::before { content: ""; position: absolute; inset: 0; border: 1px dashed rgba(196,155,255,.3); border-radius: 7px; }
+.lu-ablage > i { position: absolute; inset: 0; border: 1px dashed rgba(196,155,255,.25); border-radius: 7px; }
+.lu-ablage .lu-karte { --w: 52px; left: 0; bottom: 0; margin: 0; transform: none; cursor: default; }
+.lu-ablage .lu-karte .ecke b { font-size: 12px; }
+.lu-ablage.still .lu-karte { opacity: 0; }
+
+.lu .leiste { padding-top: 6px; }
+.lu-tausch { height: 42px; font-size: 13px; letter-spacing: .2em; }
+
+/* ——— PC: Brett links groß, rechts die Kartenleiste ——— */
+#app.breit .lu { grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 34px; }
+#app.breit .lu .zug { grid-column: 2; grid-row: 1; align-self: end; margin-top: 30px; }
+#app.breit .lu-feld { grid-column: 1; grid-row: 1 / span 3; }
+#app.breit .lu-unten { grid-column: 2; grid-row: 2; align-self: center; grid-template-columns: 1fr 1fr; grid-template-rows: auto 230px; height: auto; row-gap: 26px; justify-items: center; }
+#app.breit .lu-stapel, #app.breit .lu-ablage { width: 74px; height: 106px; }
+#app.breit .lu-ablage .lu-karte { --w: 74px; }
+#app.breit .lu-hand { grid-column: 1 / -1; grid-row: 2; width: 100%; }
+#app.breit .lu-karte { --w: 92px; }
+#app.breit .lu-karte .ecke b { font-size: 18px; }
+#app.breit .lu .leiste { grid-column: 2; grid-row: 3; padding-bottom: 20px; }
