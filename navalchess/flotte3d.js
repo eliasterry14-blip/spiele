@@ -256,12 +256,14 @@ const BAUPLAN = {
 // Spaß-Flotte: Low-Poly-Schiffe von Quaternius (CC0). Bug zeigt nach dem Laden nach -z.
 export const SAETZE = {
   spass: {
-    k: { datei: 'modelle/spass/k.glb', laenge: 0.96, drehen: Math.PI, name: 'Kreuzfahrtschiff' },
-    q: { datei: 'modelle/spass/q.glb', laenge: 0.92, drehen: Math.PI, name: 'Galeone' },
-    r: { datei: 'modelle/spass/r.glb', laenge: 0.86, drehen: Math.PI, name: 'Wikingerschiff' },
-    b: { datei: 'modelle/spass/b.glb', laenge: 0.66, drehen: Math.PI, name: 'Segelboot' },
-    n: { datei: 'modelle/spass/n.glb', laenge: 0.7, drehen: Math.PI, name: 'Schlauchboot' },
-    p: { datei: 'modelle/spass/p.glb', laenge: 0.56, drehen: Math.PI, name: 'Ruderboot' },
+    // Elias' Boote von poly.pizza: Yacht (Alex Safayan, CC BY 3.0), Piratenschiff/Schlauchboot/Segelboot (Quaternius, CC0),
+    // Kogge (Kenney, CC0), Schlepper („Some Random Person“, CC BY 3.0) – verkleinert mit werkzeug/glb_verkleinern.py
+    k: { datei: 'modelle/spass/k.glb', laenge: 0.96, drehen: Math.PI / 2, name: 'Yacht' },
+    q: { datei: 'modelle/spass/q.glb', laenge: 0.96, drehen: -Math.PI / 2, name: 'Piratenschiff' },
+    r: { datei: 'modelle/spass/r.glb', laenge: 0.84, drehen: 0, name: 'Kogge' },
+    b: { datei: 'modelle/spass/b.glb', laenge: 0.82, drehen: -Math.PI / 2, name: 'Schlepper' },
+    n: { datei: 'modelle/spass/n.glb', laenge: 0.62, drehen: 0, name: 'Schlauchboot' },
+    p: { datei: 'modelle/spass/p.glb', laenge: 0.56, drehen: 0, name: 'Segelboot' },
   },
 };
 const modelle = { spass: {} };    // Satz -> typ -> fertig ausgerichtetes Modell

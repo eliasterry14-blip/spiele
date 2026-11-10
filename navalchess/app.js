@@ -108,7 +108,7 @@ function zeigeEinstellungen() {
     `<button class="einst-zeile" data-aktion="schalter" data-wert="${schl}"><span><b>${titel}</b>${info ? `<small>${info}</small>` : ''}</span><span class="schalter" role="switch" aria-checked="${!!e[schl]}"></span></button>`;
   $('#einst-inhalt').innerHTML = `
     <div class="einst-gruppe"><h3 class="einst-titel">Schiffe</h3>
-      <div class="segment kamera">${[['kriegs', 'Kriegsmarine', 'Kanonen & Torpedos'], ['spass', 'Spaß-Flotte', 'Galeone, Wikinger …']].map(([w, n, k]) =>
+      <div class="segment kamera">${[['kriegs', 'Kriegsmarine', 'Kanonen & Torpedos'], ['spass', 'Spaß-Flotte', 'Yacht, Piraten …']].map(([w, n, k]) =>
         `<button class="${(e.satz || 'kriegs') === w ? 'an' : ''}" data-aktion="satz" data-wert="${w}"><b>${n}</b><small>${k}</small></button>`).join('')}</div>
     </div>
     <div class="einst-gruppe"><h3 class="einst-titel">Weiße Flotte</h3>${flotten('w')}</div>
@@ -127,7 +127,8 @@ function zeigeEinstellungen() {
       ${schalter('ton', 'Sound')}
       ${'vibrate' in navigator ? schalter('vibration', 'Vibration') : ''}
     </div>
-    <div class="einst-fuss">NAVAL CHESS · 3D: three.js (MIT) · Spaß-Flotte: Quaternius (CC0) · Sounds: Kenney (CC0)</div>`;
+    <div class="einst-fuss">NAVAL CHESS · 3D: three.js (MIT) · Sounds: Kenney (CC0)<br>
+      Spaß-Flotte (poly.pizza, verkleinert): Quaternius &amp; Kenney (CC0) · „Yacht“ von Alex Safayan (CC BY 3.0) · „TugBoat“ von Some “Random” Person (CC BY 3.0)</div>`;
 }
 
 function einstellungAendern(schl) {
