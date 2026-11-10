@@ -132,21 +132,16 @@ void main() {
     float rahmen = smoothstep(0.40, 0.44, kanteQ) * (1.0 - smoothstep(0.475, 0.5, kanteQ));
     float puls = 0.5 + 0.5 * sin(uZeit * 5.0);
     if (abs(m.r - 1.0) < 0.5) farbe += uTuerkis * 0.13;
-    if (abs(m.r - 2.0) < 0.5) farbe = mix(farbe, uTuerkis, 0.22) + uTuerkis * rahmen * 0.9;
+    if (abs(m.r - 2.0) < 0.5) farbe = mix(farbe, uTuerkis, 0.24) + uTuerkis * rahmen * (1.2 + 0.4 * puls);
     if (abs(m.r - 3.0) < 0.5) farbe += vec3(0.9) * rahmen + 0.06;
     if (abs(m.r - 4.0) < 0.5) farbe = mix(farbe, uOrange, 0.22) + uOrange * rahmen * 0.9;
     if (abs(m.r - 5.0) < 0.5) farbe += uRot * (1.0 - smoothstep(0.0, 0.62, rq)) * (0.55 + 0.45 * puls);
     if (abs(m.r - 6.0) < 0.5) farbe += uOrange * rahmen * 0.55 + uOrange * 0.06;
-    if (abs(m.g - 1.0) < 0.5) {
-      float punkt = 1.0 - smoothstep(0.11, 0.135, rq);
-      float welle = fract(uZeit * 0.65);
-      float ring = (1.0 - smoothstep(0.0, 0.022, abs(rq - (0.13 + welle * 0.26)))) * (1.0 - welle);
-      farbe = mix(farbe, uTuerkis * 1.15, punkt * 0.92) + uTuerkis * ring * 0.8;
-    }
-    if (abs(m.g - 2.0) < 0.5) {
-      float ring = smoothstep(0.345, 0.365, rq) * (1.0 - smoothstep(0.44, 0.46, rq));
-      farbe = mix(farbe, uTuerkis * 1.15, ring * 0.95);
-    }
+    // Ziel- und Schlagfelder: leuchtender Rahmen ums ganze Feld, pulsiert leicht
+    float leuchtRahmen = smoothstep(0.34, 0.465, kanteQ) * (1.0 - smoothstep(0.475, 0.5, kanteQ));
+    float innen = smoothstep(0.1, 0.46, kanteQ);
+    if (abs(m.g - 1.0) < 0.5) farbe += uTuerkis * (leuchtRahmen * (1.15 + 0.55 * puls) + innen * 0.16 + 0.05);
+    if (abs(m.g - 2.0) < 0.5) farbe += vec3(1.0, 0.28, 0.4) * (leuchtRahmen * (1.35 + 0.65 * puls) + innen * 0.2 + 0.07);
     if (abs(m.g - 3.0) < 0.5) {
       float w = uZeit * 0.8;
       vec2 qr = mat2(cos(w), -sin(w), sin(w), cos(w)) * q;
@@ -995,7 +990,6 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
     for (const z of ziele) setzeMarke(z.nach, 1, ZIEL_CODE[z.art] || 1);
     markenTex.needsUpdate = true;
     for (const e of alle) e.wahlZiel = e.feld === auswahl && !e.sinkt ? 1 : 0;
-    zeigeWege(auswahl, ziele);
   }
 
   // ---------- Wege: leuchtende Pfeil-Bahnen vom Schiff zu allen Zielen ----------

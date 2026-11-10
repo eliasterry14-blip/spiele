@@ -1,7 +1,7 @@
 // NAVAL CHESS – Offline-Speicher (Service Worker)
 // Beim ersten Öffnen werden alle Dateien gespeichert. Danach läuft das Spiel ohne Internet.
 // Die VERSION setzt hochladen.ps1 automatisch (Fingerabdruck aller Dateien).
-self.VERSION = 'navalchess-db20db98';
+self.VERSION = 'navalchess-01976da7';
 const VORNAME = 'navalchess-';
 const DATEIEN = [
   './', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png',
