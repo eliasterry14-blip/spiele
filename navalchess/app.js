@@ -67,8 +67,10 @@ function zeige(id, zurueck = false) {
   if (id === 's-menue') menueInfo();
   // Kamera: Spiel = über dem Brett, Menü = im Boot (Einstellungen/Auswahl lassen sie, wo sie ist)
   if (buehne) {
-    if (id === 's-spiel') { requestAnimationFrame(passeFreiraum); buehne.modus('spiel'); }
-    if (id === 's-menue') buehne.modus('menue');
+    // im Menü liegt sein Nachtbild über allem -> 3D darf dann ruhen (spart Akku)
+    if (id === 's-spiel') { buehne.aktiv(true); requestAnimationFrame(passeFreiraum); buehne.modus('spiel'); }
+    if (id === 's-menue') { buehne.modus('menue'); buehne.aktiv(false); }
+    if (id === 's-wahl' || id === 's-einst') buehne.aktiv(einstHerkunft === 's-spiel' && id === 's-einst');
   }
 }
 
@@ -916,7 +918,7 @@ function start() {
   if (daten.einst.satz !== 'kriegs') wechsleSatz(daten.einst.satz);
   for (const s of document.querySelectorAll('.fw-schiff')) s.innerHTML = schiffSVG('k', s.dataset.farbe, stilVon(s.dataset.farbe));
   // 3D-Bühne gleich zu Beginn: im Menü sitzt man im Boot mit der Laterne
-  if (stelleBuehneBereit()) { buehne.modus('menue', false); buehne.setzeNacht(daten.einst.nacht !== false, false); }
+  if (stelleBuehneBereit()) { buehne.modus('menue', false); buehne.setzeNacht(daten.einst.nacht !== false, false); buehne.aktiv(false); }
   const menue = $('#s-menue');
   menue.classList.add('aktiv');
   aktuelleSeite = menue;

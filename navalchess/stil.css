@@ -516,3 +516,34 @@ svg { display: block; }
 .kamera-knopf[hidden] { display: none; }
 .kamera-knopf svg { width: 24px; height: 24px; }
 .kamera-knopf:active { transform: scale(.92); }
+/* =====================================================================
+   SEINE BILDER: Nachtbild im Menü, Anker-Cover im Startbildschirm
+   ===================================================================== */
+.km-bild { position: absolute; inset: 0; overflow: hidden; background: #000; }
+.km-bild::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .35) 0%, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, .55) 100%); }
+/* Rahmen hat das Seitenverhältnis des Bildes -> Laterne und Sterne bleiben an der richtigen Stelle */
+.km-bild-rahmen { position: absolute; left: 50%; top: 50%; height: 100%; min-width: 100%; aspect-ratio: 640 / 832;
+  transform: translate(-50%, -50%) scale(1.02); animation: kenburns 38s ease-in-out infinite alternate; }
+@keyframes kenburns { to { transform: translate(-50%, -51.2%) scale(1.09); } }
+.km-bild-rahmen img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.km-laterne { position: absolute; left: 53.3%; top: 84.6%; width: 52%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%;
+  opacity: 0; transition: opacity 1.6s ease; mix-blend-mode: screen; pointer-events: none; }
+.km-laterne::before { content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 200, 120, .62) 0%, rgba(255, 150, 60, .2) 30%, rgba(255, 120, 40, 0) 68%);
+  animation: flackern 1.9s linear infinite; }
+#s-menue.da .km-laterne { opacity: 1; }
+@keyframes flackern { 0% { opacity: .85; } 9% { opacity: 1; } 14% { opacity: .72; } 22% { opacity: .96; } 35% { opacity: .8; }
+  47% { opacity: 1; } 58% { opacity: .86; } 70% { opacity: .98; } 79% { opacity: .74; } 88% { opacity: .93; } 100% { opacity: .85; } }
+.km-stern { position: absolute; width: 3px; height: 3px; margin: -1.5px; border-radius: 50%; background: #fff;
+  box-shadow: 0 0 6px 1px rgba(210, 225, 255, .9); opacity: 0; animation: stern-blinken 3.6s ease-in-out infinite; animation-delay: var(--d); }
+@keyframes stern-blinken { 0%, 100% { opacity: 0; transform: scale(.4); } 50% { opacity: 1; transform: scale(1.2); } }
+/* Startbildschirm mit seinem Anker-Cover: taucht aus dem Dunkel auf, ein Lichtschimmer läuft darüber */
+.intro-cover { position: relative; height: min(52vh, 420px); aspect-ratio: 709 / 1024; overflow: hidden;
+  opacity: 0; filter: blur(8px) brightness(.6); transform: scale(.95); animation: cover-rein 1.6s .15s cubic-bezier(.2, .8, .2, 1) forwards; }
+.intro-cover img { width: 100%; height: 100%; display: block; }
+.intro-cover::after { content: ""; position: absolute; inset: -20% -60%; mix-blend-mode: screen;
+  background: linear-gradient(105deg, transparent 40%, rgba(180, 240, 255, .55) 50%, transparent 60%);
+  transform: translateX(-70%); animation: schimmer-lauf 1.6s 1.1s ease-in-out forwards; }
+@keyframes cover-rein { to { opacity: 1; filter: none; transform: none; } }
+@keyframes schimmer-lauf { to { transform: translateX(70%); } }
