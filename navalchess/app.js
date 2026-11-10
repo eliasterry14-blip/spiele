@@ -4,6 +4,7 @@ import { Partie, START_FEN, denke } from './schach.js';
 import { schiffSVG, verlaeufeEinsetzen, FLOTTEN, STANDARD_FLOTTE, NAMEN } from './schiffe.js';
 import { klang, tonAn, wecken } from './ton.js';
 import { erstelleBuehne } from './buehne.js';
+import { ladeSatz, setzeSatz, SAETZE } from './flotte3d.js';
 
 const $ = (s) => document.querySelector(s);
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -15,7 +16,7 @@ const TEST = new URLSearchParams(location.search).has('test');
 // =====================================================================
 const SCHLUESSEL = 'navalchess.v1';
 const STANDARD = {
-  einst: { ton: true, vibration: true, markierungen: true, koordinaten: true, drehen: false, schnell: false, blick: 'flach', flotteW: STANDARD_FLOTTE.w, flotteB: STANDARD_FLOTTE.b },
+  einst: { ton: true, vibration: true, markierungen: true, koordinaten: true, drehen: false, schnell: false, blick: 'flach', satz: 'kriegs', flotteW: STANDARD_FLOTTE.w, flotteB: STANDARD_FLOTTE.b },
   wahl: { stufe: 2, farbe: 'w', artKi: 'klassisch', artZwei: 'klassisch' },
   partie: null, // { modus: 'ki'|'zwei', art: 'klassisch'|'gefecht', stufe, spielerFarbe, start, zuege: [uci...], ende }
 };
@@ -106,6 +107,10 @@ function zeigeEinstellungen() {
   const schalter = (schl, titel, info = '') =>
     `<button class="einst-zeile" data-aktion="schalter" data-wert="${schl}"><span><b>${titel}</b>${info ? `<small>${info}</small>` : ''}</span><span class="schalter" role="switch" aria-checked="${!!e[schl]}"></span></button>`;
   $('#einst-inhalt').innerHTML = `
+    <div class="einst-gruppe"><h3 class="einst-titel">Schiffe</h3>
+      <div class="segment kamera">${[['kriegs', 'Kriegsmarine', 'Kanonen & Torpedos'], ['spass', 'Spaß-Flotte', 'Galeone, Wikinger …']].map(([w, n, k]) =>
+        `<button class="${(e.satz || 'kriegs') === w ? 'an' : ''}" data-aktion="satz" data-wert="${w}"><b>${n}</b><small>${k}</small></button>`).join('')}</div>
+    </div>
     <div class="einst-gruppe"><h3 class="einst-titel">Weiße Flotte</h3>${flotten('w')}</div>
     <div class="einst-gruppe"><h3 class="einst-titel">Schwarze Flotte</h3>${flotten('b')}</div>
     <div class="einst-gruppe"><h3 class="einst-titel">Kamera</h3>
@@ -122,7 +127,7 @@ function zeigeEinstellungen() {
       ${schalter('ton', 'Sound')}
       ${'vibrate' in navigator ? schalter('vibration', 'Vibration') : ''}
     </div>
-    <div class="einst-fuss">NAVAL CHESS · 3D: three.js (MIT) · Sounds: Kenney (CC0)</div>`;
+    <div class="einst-fuss">NAVAL CHESS · 3D: three.js (MIT) · Spaß-Flotte: Quaternius (CC0) · Sounds: Kenney (CC0)</div>`;
 }
 
 function einstellungAendern(schl) {
@@ -198,6 +203,14 @@ function passeFreiraum() {
   if (!r.width || !r.height) return;
   buehne.setzeFreiraum({ x: r.left - a.left, y: r.top - a.top, w: r.width, h: r.height });
 }
+// Schiffs-Satz wechseln: Kriegsmarine (selbst gebaut) oder Spaß-Flotte (3D-Modelle)
+async function wechsleSatz(satz) {
+  if (satz !== 'kriegs' && !(await ladeSatz(satz))) { zeigeToast('Spaß-Flotte konnte nicht laden'); return; }
+  if (daten.einst.satz !== satz) return;
+  setzeSatz(satz);
+  buehne?.tauscheSchiffe();
+}
+const schiffName = (t) => (daten.einst.satz === 'spass' ? SAETZE.spass[t].name : NAMEN[t]);
 function setzeVh() { document.documentElement.style.setProperty('--vh', (window.innerHeight / 100) + 'px'); }
 function belegung() {
   const m = new Map();
@@ -555,7 +568,7 @@ function waehleUmwandlung(farbe) {
   return new Promise((ok) => {
     umwandlungFertig = ok;
     oeffneBlatt(`<h3>Beförderung</h3><div class="umw-reihe">${['q', 'r', 'b', 'n'].map((t) =>
-      `<button class="umw-knopf" data-aktion="umw" data-wert="${t}">${schiffSVG(t, farbe, stilVon(farbe))}<span>${NAMEN[t]}</span></button>`).join('')}</div>`);
+      `<button class="umw-knopf" data-aktion="umw" data-wert="${t}">${schiffSVG(t, farbe, stilVon(farbe))}<span>${schiffName(t)}</span></button>`).join('')}</div>`);
   });
 }
 function beendeUmwandlung(typ) {
@@ -786,6 +799,11 @@ document.addEventListener('click', (e) => {
     case 'spielmenue': klang.knopf(); spielMenue(); break;
     case 'blatt-zu': schliesseBlatt(); beendeUmwandlung(null); break;
     case 'umw': schliesseBlatt(); klang.knopf(); beendeUmwandlung(k.dataset.wert); break;
+    case 'satz':
+      daten.einst.satz = k.dataset.wert; speichere(); klang.umwandlung();
+      wechsleSatz(daten.einst.satz);
+      zeigeEinstellungen();
+      break;
     case 'blick':
       daten.einst.blick = k.dataset.wert; speichere(); klang.wahl();
       buehne?.setzeBlickwinkel(BLICK[daten.einst.blick]);
@@ -826,6 +844,7 @@ function start() {
   setzeVh();
   window.addEventListener('resize', setzeVh);
   tonAn(daten.einst.ton);
+  if (daten.einst.satz !== 'kriegs') wechsleSatz(daten.einst.satz);
   // Sterne am Himmel
   $('#sterne').innerHTML = Array.from({ length: 46 }, () =>
     `<i style="left:${zufall(0, 100).toFixed(1)}%;top:${zufall(0, 92).toFixed(1)}%;--d:${zufall(-3, 0).toFixed(2)}s;opacity:${zufall(0.25, 0.8).toFixed(2)}"></i>`).join('');

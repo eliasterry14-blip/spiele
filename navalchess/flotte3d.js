@@ -4,6 +4,7 @@
 // Maße: ein Brettfeld ist 1 x 1. Der Bug zeigt nach -z (Richtung Gegner von Weiß aus).
 import * as THREE from './vendor/three.module.min.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
+import { RoundedBoxGeometry } from './vendor/RoundedBoxGeometry.js';
 import { farbsatz } from './schiffe.js';
 
 // ---------- Materialien: eines pro Seite, Farben lassen sich jederzeit ändern ----------
@@ -12,6 +13,7 @@ function neueMaterialien() {
   const std = (o) => new THREE.MeshStandardMaterial({ flatShading: true, ...o });
   return {
     rumpf: std({ roughness: 0.55, metalness: 0.25 }),
+    unten: std({ roughness: 0.7, metalness: 0.1 }),
     deck: std({ roughness: 0.8, metalness: 0.05 }),
     aufbau: std({ roughness: 0.45, metalness: 0.2 }),
     dunkel: std({ roughness: 0.5, metalness: 0.5 }),
@@ -30,7 +32,8 @@ export function setzeFlotte(farbe, stil) {
   const f = farbsatz(stil, farbe);
   const m = material(farbe);
   m.rumpf.color.set(f.rumpf);
-  m.deck.color.set(f.hell ? '#8f9ba6' : '#2a3038');
+  m.deck.color.set(f.hell ? '#c9a877' : '#5c4b3c');      // Holzdeck
+  m.unten.color.set(f.hell ? '#a8343f' : '#151a20');     // Unterwasserschiff
   m.aufbau.color.set(f.aufbau);
   m.dunkel.color.set(f.dunkel);
   m.akzent.color.set(f.akzent);
@@ -45,8 +48,10 @@ export function setzeFlotte(farbe, stil) {
 }
 
 // ---------- kleine Bau-Helfer ----------
+// Kasten mit leicht gerundeten Kanten (weicher Low-Poly-Look)
 function kasten(b, h, t, mat, x, y, z) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(b, h, t), mat);
+  const r = Math.min(b, h, t) * 0.2;
+  const m = new THREE.Mesh(r > 0.004 ? new RoundedBoxGeometry(b, h, t, 1, r) : new THREE.BoxGeometry(b, h, t), mat);
   m.position.set(x, y + h / 2, z);
   return m;
 }
@@ -72,7 +77,15 @@ function rumpf(M, laenge, breite, hoehe, tiefgang) {
   g.rotateX(-Math.PI / 2);     // Umriss liegt jetzt flach, Bug zeigt nach -z
   const m = new THREE.Mesh(g, [M.deck, M.rumpf]);
   m.position.y = -tiefgang;
-  return m;
+  // farbiges Unterwasserschiff mit Streifen knapp über der Wasserlinie
+  const gu = new THREE.ExtrudeGeometry(s, { depth: tiefgang + 0.022, bevelEnabled: false, curveSegments: 6 });
+  gu.rotateX(-Math.PI / 2);
+  const unten = new THREE.Mesh(gu, M.unten);
+  unten.scale.set(1.035, 1, 1.012);
+  unten.position.y = -tiefgang - 0.004;
+  const gruppe = new THREE.Group();
+  gruppe.add(m, unten);
+  return gruppe;
 }
 // Geschützturm mit Rohren (richtung -1 = nach vorne/-z, 1 = nach hinten)
 function geschuetz(M, z, y, groesse, rohre = 1, richtung = -1) {
@@ -239,14 +252,32 @@ const BAUPLAN = {
   },
 };
 
-// ---------- echte 3D-Modelle (GLB), falls vorhanden ----------
-const modelle = {};            // typ -> { szene, skala, versatz }
+// ---------- echte 3D-Modelle (GLB) als zweite Flotte ----------
+// Spaß-Flotte: Low-Poly-Schiffe von Quaternius (CC0). Bug zeigt nach dem Laden nach -z.
+export const SAETZE = {
+  spass: {
+    k: { datei: 'modelle/spass/k.glb', laenge: 0.96, drehen: Math.PI, name: 'Kreuzfahrtschiff' },
+    q: { datei: 'modelle/spass/q.glb', laenge: 0.92, drehen: Math.PI, name: 'Galeone' },
+    r: { datei: 'modelle/spass/r.glb', laenge: 0.86, drehen: Math.PI, name: 'Wikingerschiff' },
+    b: { datei: 'modelle/spass/b.glb', laenge: 0.66, drehen: Math.PI, name: 'Segelboot' },
+    n: { datei: 'modelle/spass/n.glb', laenge: 0.7, drehen: Math.PI, name: 'Schlauchboot' },
+    p: { datei: 'modelle/spass/p.glb', laenge: 0.56, drehen: Math.PI, name: 'Ruderboot' },
+  },
+};
+const modelle = { spass: {} };    // Satz -> typ -> fertig ausgerichtetes Modell
+let aktiverSatz = 'kriegs';
+export function setzeSatz(satz) { aktiverSatz = satz; }
+export const satzGeladen = (satz) => satz === 'kriegs' || Object.keys(modelle[satz] || {}).length === 6;
 const tints = { w: {}, b: {} }; // Materialkopien pro Seite und Original-Material
 const tintFarbe = { w: null, b: null };
-const modellKopien = new Set();
-export const MODELL_INFO = { geladen: false };
 
-export async function ladeModelle(liste) {
+export async function ladeSatz(satz, basis = '') {
+  if (satzGeladen(satz)) return true;
+  const ergebnisse = await ladeModelle(Object.fromEntries(Object.entries(SAETZE[satz]).map(([t, e]) => [t, { ...e, datei: basis + e.datei }])), satz);
+  return ergebnisse.every((e) => e.status === 'fulfilled');
+}
+
+export async function ladeModelle(liste, satz = 'spass') {
   const lader = new GLTFLoader();
   const ergebnisse = await Promise.allSettled(Object.entries(liste).map(async ([typ, eintrag]) => {
     const gltf = await lader.loadAsync(eintrag.datei);
@@ -263,45 +294,48 @@ export async function ladeModelle(liste) {
     szene.position.set(-mitte.x * skala, -box.min.y * skala - (eintrag.tiefgang ?? 0.05), -mitte.z * skala);
     szene.scale.setScalar(skala);
     huelle.add(szene);
-    modelle[typ] = huelle;
+    szene.traverse((o) => { if (o.isMesh) { o.material.flatShading = true; o.material.needsUpdate = true; } });
+    modelle[satz][typ] = huelle;
   }));
-  MODELL_INFO.geladen = ergebnisse.some((e) => e.status === 'fulfilled');
+  for (const e of ergebnisse) if (e.status === 'rejected') console.warn('Modell fehlt:', e.reason);
   return ergebnisse;
 }
 
 // Material eines Modells für eine Seite einfärben (weiß = hell, schwarz = dunkel)
+// Weiße Flotte behält die echten Farben (leicht getönt), schwarze Flotte wird dunkel eingefärbt
+function toenung(f) { return f.hell ? new THREE.Color(f.rumpfHell) : new THREE.Color(f.aufbau).multiplyScalar(2.3); }
 function getintet(original, farbe) {
   if (!tints[farbe][original.uuid]) {
     const m = original.clone();
-    tints[farbe][original.uuid] = m;
     m.userData.original = original;
+    if (tintFarbe[farbe]) m.color.copy(original.color).multiply(toenung(tintFarbe[farbe]));
+    tints[farbe][original.uuid] = m;
   }
   return tints[farbe][original.uuid];
 }
 function aktualisiereModellFarben(farbe) {
   const f = tintFarbe[farbe];
   if (!f) return;
-  for (const m of Object.values(tints[farbe])) {
-    m.color.copy(m.userData.original.color).multiply(new THREE.Color(f.hell ? '#ffffff' : f.rumpf).multiplyScalar(f.hell ? 1 : 1.6));
-  }
+  const t = toenung(f);
+  for (const m of Object.values(tints[farbe])) m.color.copy(m.userData.original.color).multiply(t);
 }
 
-// Ein Schiff bauen: Gruppe mit Modell, Leuchtring und Schatten
+// Ein Schiff bauen (aus dem aktiven Satz: Kriegsmarine = selbst gebaut, Spaß-Flotte = Modelle)
 export function baueSchiff(typ, farbe) {
-  const M = material(farbe);
+  const vorlage = modelle[aktiverSatz]?.[typ];
   let modell;
-  if (modelle[typ]) {
-    modell = modelle[typ].clone(true);
+  const huelle = new THREE.Group();
+  if (vorlage) {
+    modell = vorlage.clone(true);
     modell.traverse((o) => {
       if (o.isMesh) o.material = Array.isArray(o.material) ? o.material.map((m) => getintet(m, farbe)) : getintet(o.material, farbe);
     });
-    modellKopien.add(modell);
+    huelle.scale.set(1, 1.12, 1);
   } else {
-    modell = BAUPLAN[typ](M);
+    modell = BAUPLAN[typ](material(farbe));
+    // etwas größer und höher, damit man die Schiffe auf dem Handy gut erkennt
+    huelle.scale.set(1.08, 1.32, 1.08);
   }
-  // etwas größer und höher, damit man die Schiffe auf dem Handy gut erkennt
-  const huelle = new THREE.Group();
   huelle.add(modell);
-  huelle.scale.set(1.08, 1.32, 1.08);
   return huelle;
 }

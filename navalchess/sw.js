@@ -1,12 +1,13 @@
 // NAVAL CHESS – Offline-Speicher (Service Worker)
 // Beim ersten Öffnen werden alle Dateien gespeichert. Danach läuft das Spiel ohne Internet.
 // Die VERSION setzt hochladen.ps1 automatisch (Fingerabdruck aller Dateien).
-self.VERSION = 'navalchess-f03447ed';
+self.VERSION = 'navalchess-ec9e7691';
 const VORNAME = 'navalchess-';
 const DATEIEN = [
   './', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png',
   'stil.css', 'app.js', 'schach.js', 'ki.js', 'schiffe.js', 'ton.js', 'buehne.js', 'flotte3d.js',
-  'vendor/three.module.min.js', 'vendor/GLTFLoader.js', 'vendor/BufferGeometryUtils.js',
+  'vendor/three.module.min.js', 'vendor/GLTFLoader.js', 'vendor/BufferGeometryUtils.js', 'vendor/RoundedBoxGeometry.js',
+  'modelle/spass/k.glb', 'modelle/spass/q.glb', 'modelle/spass/r.glb', 'modelle/spass/b.glb', 'modelle/spass/n.glb', 'modelle/spass/p.glb',
   'ton/zug.wav', 'ton/schlag.wav', 'ton/knopf.wav', 'ton/umwandlung.wav',
 ];
 

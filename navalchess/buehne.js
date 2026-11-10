@@ -922,6 +922,8 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
     setzeKoordinaten(an) { beschriftung.visible = an; },
     setzeFlotten(w, b) { setzeFlotte('w', w); setzeFlotte('b', b); },
     aufbauen, zug, attacke, markiere, treffer, hebe, ziehe, zurueck, loslassen,
+    // alle Schiffe gegen den neuen Satz tauschen (mit Glitzer, nacheinander)
+    tauscheSchiffe() { [...alle].filter((e) => !e.sinkt).forEach((e, i) => setTimeout(() => verwandle(e, e.typ), i * 45)); },
     aktiv(an) { aktiv = an; if (an) letzteZeit = performance.now(); },
     debug: () => ({ tweens: tweens.length, teilchen: teilchen.length, schaum: schaum.length, schiffe: [...alle].slice(0, 4).map((e) => ({ feld: e.feld, tauchen: +e.tauchen.toFixed(2), y: +e.kipp.position.y.toFixed(3), gy: +e.gruppe.position.y.toFixed(3), s: e.kipp.scale.x })), kamera: kamera.position.toArray().map((v) => +v.toFixed(2)), abstand: blick.abstand }),
   };
