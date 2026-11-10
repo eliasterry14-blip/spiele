@@ -431,10 +431,18 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
   const PJ = pose();
   const hilf = new THREE.Vector3();
   const bogenPunkt = new THREE.Vector3();
-  function poseSpiel(o) {
-    const { azimut, hoehe, abstand, ziel } = blick;
-    o.pos.set(ziel.x + Math.sin(azimut) * Math.cos(hoehe) * abstand, ziel.y + Math.sin(hoehe) * abstand, ziel.z + Math.cos(azimut) * Math.cos(hoehe) * abstand);
-    o.ziel.copy(ziel);
+  // was der Spieler selbst an der Kamera verstellt (drehen, kippen, zoomen, verschieben)
+  const benutzer = { azimut: 0, hoehe: 0, zoom: 1, x: 0, z: 0 };
+  const OHNE = { azimut: 0, hoehe: 0, zoom: 1, x: 0, z: 0 };
+  function poseSpiel(o, mitBenutzer = true) {
+    const b = mitBenutzer ? benutzer : OHNE;
+    const azimut = blick.azimut + b.azimut;
+    const hoehe = THREE.MathUtils.clamp(blick.hoehe + b.hoehe, 0.2, 1.45);
+    const abstand = blick.abstand * b.zoom;
+    const zx = blick.ziel.x + b.x;
+    const zz = blick.ziel.z + b.z;
+    o.pos.set(zx + Math.sin(azimut) * Math.cos(hoehe) * abstand, blick.ziel.y + Math.sin(hoehe) * abstand, zz + Math.cos(azimut) * Math.cos(hoehe) * abstand);
+    o.ziel.set(zx, blick.ziel.y, zz);
     o.up.set(0, 1, 0);
     o.fov = 48;
     o.vx = versatz.x;
@@ -452,6 +460,7 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
     o.vy = 0;
   }
   let letzteProj = '';
+  let letzteSicht = true;
   function kameraSetzen() {
     poseSpiel(PS);
     let P = PS;
@@ -484,8 +493,11 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
       if (P.vx || P.vy) kamera.setViewOffset(leinwandB, leinwandH, P.vx, P.vy, leinwandB, leinwandH); else kamera.clearViewOffset();
       kamera.updateProjectionMatrix();
     }
-    const az = blick.azimut * k;
+    const az = (blick.azimut + benutzer.azimut) * k;
     lichter.rotation.y = az;
+    // Beschriftung umdrehen, wenn man von der anderen Seite schaut
+    const weissSicht = Math.abs(winkelDiff(blick.azimut + benutzer.azimut, 0)) < Math.PI / 2;
+    if (weissSicht !== letzteSicht) { letzteSicht = weissSicht; if (beschriftung) beschriften(); }
     // Sonne/Mond steht vorne am Horizont (gegenüber der Kamera) -> Glitzerpfad auf dem Wasser
     SONNE.set(0.18, 0.1 + nacht * 0.05, -1).applyAxisAngle(hilf.set(0, 1, 0), az).normalize();
     U.uLicht.value.copy(SONNE);
@@ -526,7 +538,7 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
     const fr = freiraum || { x: 0, y: 0, w, h };
     const merk = blick.azimut;
     blick.azimut = 0;
-    const probe = () => { poseSpiel(PS); kamera.position.copy(PS.pos); kamera.up.set(0, 1, 0); kamera.lookAt(PS.ziel); kamera.updateMatrixWorld(); return rahmen(w, h); };
+    const probe = () => { poseSpiel(PS, false); kamera.position.copy(PS.pos); kamera.up.set(0, 1, 0); kamera.lookAt(PS.ziel); kamera.updateMatrixWorld(); return rahmen(w, h); };
     let lo = 4;
     let hi = 140;
     for (let i = 0; i < 30; i++) {
@@ -557,7 +569,7 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
   const schriftGeo = new THREE.PlaneGeometry(0.32, 0.32);
   function beschriften() {
     beschriftung.clear();
-    const weiss = Math.abs(winkelDiff(blick.azimut, 0)) < Math.PI / 2;
+    const weiss = Math.abs(winkelDiff(blick.azimut + benutzer.azimut, 0)) < Math.PI / 2;
     for (let i = 0; i < 8; i++) {
       for (const [text, x, z] of [[String.fromCharCode(97 + i), i - 3.5, weiss ? 4.42 : -4.42], [String(i + 1), weiss ? -4.42 : 4.42, 4.5 - (i + 1)]]) {
         const m = new THREE.Mesh(schriftGeo, schriftMaterial(text));
@@ -983,7 +995,100 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
     for (const z of ziele) setzeMarke(z.nach, 1, ZIEL_CODE[z.art] || 1);
     markenTex.needsUpdate = true;
     for (const e of alle) e.wahlZiel = e.feld === auswahl && !e.sinkt ? 1 : 0;
+    zeigeWege(auswahl, ziele);
   }
+
+  // ---------- Wege: leuchtende Pfeil-Bahnen vom Schiff zu allen Zielen ----------
+  const wegGruppe = new THREE.Group();
+  szene.add(wegGruppe);
+  const wegTex = textur((g, s) => {
+    g.clearRect(0, 0, s, s);
+    g.fillStyle = '#fff';
+    // Pfeilspitze (zeigt in Fahrtrichtung = +x)
+    g.beginPath(); g.moveTo(s * 0.12, s * 0.12); g.lineTo(s * 0.62, s * 0.5); g.lineTo(s * 0.12, s * 0.88); g.lineTo(s * 0.32, s * 0.5); g.closePath(); g.fill();
+  }, 64);
+  wegTex.wrapS = THREE.RepeatWrapping;
+  const WEG_MAT = {
+    ziel: new THREE.MeshBasicMaterial({ map: wegTex, color: '#46ffd9', transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending }),
+    feuer: new THREE.MeshBasicMaterial({ map: wegTex, color: '#ff8a4a', transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }),
+  };
+  const BOGEN_MAT = {
+    ziel: new THREE.MeshBasicMaterial({ color: '#46ffd9', transparent: true, opacity: 0.65, depthWrite: false, blending: THREE.AdditiveBlending }),
+    feuer: new THREE.MeshBasicMaterial({ color: '#ff8a4a', transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }),
+  };
+  function band(a, b, mat) {
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const laenge = Math.hypot(dx, dz) - 0.42;
+    if (laenge <= 0.05) return;
+    const geo = new THREE.PlaneGeometry(laenge, 0.16);
+    geo.rotateX(-Math.PI / 2);
+    const uv = geo.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * laenge * 3.2);
+    const m = new THREE.Mesh(geo, mat);
+    const r = Math.hypot(dx, dz);
+    m.position.set(a.x + (dx / r) * (0.3 + laenge / 2), 0.11, a.z + (dz / r) * (0.3 + laenge / 2));
+    m.rotation.y = -Math.atan2(dz, dx);
+    m.renderOrder = 3;
+    wegGruppe.add(m);
+  }
+  function bogen(a, b, hoch, mat) {
+    const mitte = a.clone().lerp(b, 0.5);
+    mitte.y = hoch;
+    const kurve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(a.x, 0.15, a.z), mitte, new THREE.Vector3(b.x, 0.15, b.z));
+    const m = new THREE.Mesh(new THREE.TubeGeometry(kurve, 24, 0.022, 6, false), mat);
+    m.renderOrder = 3;
+    wegGruppe.add(m);
+  }
+  function zeigeWege(auswahl, ziele) {
+    for (const k of wegGruppe.children) k.geometry.dispose();
+    wegGruppe.clear();
+    if (!auswahl || !ziele.length) return;
+    const e = schiffe.get(auswahl);
+    const a = feldPos(auswahl);
+    // pro Richtung nur die weiteste Bahn (die näheren Ziele liegen darauf)
+    const weiteste = new Map();
+    for (const z of ziele) {
+      const b = feldPos(z.nach);
+      const feuer = z.art === 'feuer';
+      if (e?.typ === 'n' && !feuer) { bogen(a, b, 0.75, BOGEN_MAT.ziel); continue; }
+      if (feuer && z.waffe === 'artillerie') { bogen(a, b, 1.3, BOGEN_MAT.feuer); continue; }
+      if (feuer && z.waffe === 'wasserbomben') { bogen(a, b, 0.5, BOGEN_MAT.feuer); continue; }
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const g = Math.max(Math.abs(dx), Math.abs(dz));
+      const schl = `${Math.round(dx / g)},${Math.round(dz / g)},${feuer}`;
+      const alt = weiteste.get(schl);
+      if (!alt || g > alt.g) weiteste.set(schl, { b, g, feuer });
+    }
+    for (const { b, feuer } of weiteste.values()) band(a, b, feuer ? WEG_MAT.feuer : WEG_MAT.ziel);
+  }
+
+  // ---------- Kamera selbst steuern (drehen, kippen, zoomen, verschieben) ----------
+  function kameraDrehen(dAzimut, dHoehe) {
+    benutzer.azimut += dAzimut;
+    benutzer.hoehe = THREE.MathUtils.clamp(benutzer.hoehe + dHoehe, 0.2 - blick.hoehe, 1.45 - blick.hoehe);
+  }
+  function kameraZoom(faktor) { benutzer.zoom = THREE.MathUtils.clamp(benutzer.zoom * faktor, 0.38, 1.3); }
+  function kameraSchieben(dxPx, dyPx) {
+    const az = blick.azimut + benutzer.azimut;
+    const s = (blick.abstand * benutzer.zoom) / Math.max(300, leinwandH) * 1.1;
+    benutzer.x = THREE.MathUtils.clamp(benutzer.x - (Math.cos(az) * dxPx - Math.sin(az) * dyPx) * s, -4, 4);
+    benutzer.z = THREE.MathUtils.clamp(benutzer.z - (-Math.sin(az) * dxPx - Math.cos(az) * dyPx) * s, -4, 4);
+  }
+  function kameraZurueck() {
+    const start = { ...benutzer };
+    const ziel = winkelDiff(0, start.azimut);
+    return tween(tempo(700), (k) => {
+      const g = glatt(k);
+      benutzer.azimut = start.azimut + ziel * g;
+      benutzer.hoehe = start.hoehe * (1 - g);
+      benutzer.zoom = start.zoom + (1 - start.zoom) * g;
+      benutzer.x = start.x * (1 - g);
+      benutzer.z = start.z * (1 - g);
+    }).then(() => Object.assign(benutzer, OHNE));
+  }
+  const kameraVeraendert = () => Math.abs(winkelDiff(benutzer.azimut, 0)) > 0.02 || Math.abs(benutzer.hoehe) > 0.02 || Math.abs(benutzer.zoom - 1) > 0.02 || Math.abs(benutzer.x) + Math.abs(benutzer.z) > 0.05;
 
   // ---------- Antippen ----------
   const strahl = new THREE.Raycaster();
@@ -1129,6 +1234,7 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
     if (nacht > 0.5 && naechsteSchnuppe <= 0) { naechsteSchnuppe = zufall(4, 10); sternschnuppe(); }
     U.uZeit.value = t;
     himmelU.uZeit.value = t;
+    wegTex.offset.x -= dt * 1.6;   // Pfeile auf den Bahnen wandern zum Ziel
     kameraSetzen();
     // Das Wasser-Netz wandert mit der Kamera mit (die Wellen selbst bleiben fest in der Welt)
     wasser.position.set(Math.round(kamera.position.x / 0.25) * 0.25, 0, Math.round((kamera.position.z - 22) / 0.25) * 0.25);
@@ -1206,6 +1312,7 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
     setzeFlotten(w, b) { setzeFlotte('w', w); setzeFlotte('b', b); },
     aufbauen, zug, attacke, markiere, treffer, hebe, ziehe, zurueck, loslassen,
     modus, setzeNacht, zuenden, feuerwerk,
+    kameraDrehen, kameraZoom, kameraSchieben, kameraZurueck, kameraVeraendert,
     // alle Schiffe gegen den neuen Satz tauschen (mit Glitzer, nacheinander)
     tauscheSchiffe() { [...alle].filter((e) => !e.sinkt).forEach((e, i) => setTimeout(() => verwandle(e, e.typ), i * 45)); },
     aktiv(an) { aktiv = an; if (an) letzteZeit = performance.now(); },

@@ -282,7 +282,7 @@ function markiere(ueber = null) {
   const letzter = v[v.length - 1] || null;
   const ziele = [];
   if (spiel.auswahl && (daten.einst.markierungen || spiel.feuerModus)) {
-    for (const z of spiel.ziele) ziele.push({ nach: z.nach, art: spiel.feuerModus ? 'feuer' : (z.schlag ? 'schlag' : 'ziel') });
+    for (const z of spiel.ziele) ziele.push({ nach: z.nach, art: spiel.feuerModus ? 'feuer' : (z.schlag ? 'schlag' : 'ziel'), waffe: z.waffe });
   }
   const schuetzen = spiel.feuerModus && !spiel.auswahl ? [...new Set(p.zuege().filter((z) => z.feuer).map((z) => z.von))] : [];
   buehne.markiere({
@@ -404,6 +404,7 @@ function neuesSpiel({ modus, art, stufe, spielerFarbe }) {
   setzeAusrichtung(gedreht, buehneHatSchiffe && warGedreht !== gedreht);
   buehne.aufbauen(belegung(), { animiert: true, staffel: true, neu: !buehneHatSchiffe });
   buehneHatSchiffe = true;
+  buehne.kameraZurueck().then(zeigeKameraKnopf);
   aktualisiere();
   klang.horn();
   if (kiIstDran()) setTimeout(() => { if (kiIstDran() && !spiel.kiDenkt) kiZug(); }, 1100);
@@ -650,8 +651,12 @@ function brichKiAb() {
 // Touch-Steuerung: Schiff antippen und Ziel antippen – ODER Schiff mit dem Finger ziehen
 // =====================================================================
 const spielEl = $('#s-spiel');
-const aufBrett = (e) => !e.target.closest('.spiel-kopf, .spieler, .zugliste, .aktionen');
-let zieh = null;
+const aufBrett = (e) => !e.target.closest('.spiel-kopf, .spieler, .zugliste, .aktionen, .kamera-knopf');
+let zieh = null;          // ein eigenes Schiff wird gezogen
+let kameraZieh = null;    // ein Finger auf dem Wasser: Kamera drehen (oder nur antippen)
+let geste = null;         // zwei Finger: zoomen + verschieben
+let nachGeste = false;    // bis alle Finger weg sind, keine Taps auswerten
+const finger = new Map();
 function fingerFeld(x, y) {
   const t = buehne.treffer(x, y);
   const istZiel = (f) => f && spiel.auswahl && spiel.ziele.some((m) => m.nach === f);
@@ -660,47 +665,91 @@ function fingerFeld(x, y) {
   if (istZiel(t.flaeche)) return t.flaeche;
   return t.schiff || t.flaeche;
 }
+function zeigeKameraKnopf() { $('#kamera-knopf').hidden = !buehne?.kameraVeraendert(); }
 spielEl.addEventListener('pointerdown', (e) => {
-  if (!e.isPrimary || e.button > 0 || !buehne || !aufBrett(e)) return;
+  if (!buehne || !aufBrett(e)) return;
   wecken();
-  if (eingabeGesperrt()) return;
-  const feld = fingerFeld(e.clientX, e.clientY);
-  if (!feld) { if (spiel.auswahl) entwaehle(); return; }
-  const p = spiel.partie;
-  const fig = p.figurAuf(feld);
-  const eigene = !!fig && fig.farbe === p.amZug;
-  zieh = { start: feld, x: e.clientX, y: e.clientY, aktiv: false, eigene, war: spiel.auswahl === feld, id: e.pointerId, ueber: null };
-  if (eigene && spiel.auswahl !== feld) waehle(feld);
-  if (eigene) { try { spielEl.setPointerCapture(e.pointerId); } catch { /* egal */ } }
+  finger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  try { spielEl.setPointerCapture(e.pointerId); } catch { /* egal */ }
+  if (finger.size >= 2) {
+    // zweiter Finger: Ziehen abbrechen, Zoom-Geste beginnen
+    if (zieh?.aktiv) buehne.zurueck(zieh.start);
+    zieh = null;
+    kameraZieh = null;
+    nachGeste = true;
+    const [a, b] = [...finger.values()];
+    geste = { abstand: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+    markiere();
+    return;
+  }
+  if (e.button > 0) return;
+  const gesperrt = eingabeGesperrt();
+  const feld = gesperrt ? null : fingerFeld(e.clientX, e.clientY);
+  const fig = feld ? spiel.partie.figurAuf(feld) : null;
+  const eigene = !!fig && fig.farbe === spiel.partie.amZug;
+  if (eigene) {
+    zieh = { start: feld, x: e.clientX, y: e.clientY, aktiv: false, war: spiel.auswahl === feld, id: e.pointerId, ueber: null };
+    if (spiel.auswahl !== feld) waehle(feld);
+  } else {
+    kameraZieh = { feld, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, bewegt: false, gesperrt, id: e.pointerId };
+  }
 });
 spielEl.addEventListener('pointermove', (e) => {
-  if (!zieh || e.pointerId !== zieh.id || !zieh.eigene || spiel.feuerModus || spiel.sperre) return;
+  if (!finger.has(e.pointerId)) return;
+  finger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (geste && finger.size >= 2) {
+    const [a, b] = [...finger.values()];
+    const abstand = Math.hypot(a.x - b.x, a.y - b.y);
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    if (abstand > 10 && geste.abstand > 10) buehne.kameraZoom(geste.abstand / abstand);
+    buehne.kameraSchieben(mx - geste.mx, my - geste.my);
+    Object.assign(geste, { abstand, mx, my });
+    zeigeKameraKnopf();
+    return;
+  }
+  if (kameraZieh && e.pointerId === kameraZieh.id) {
+    if (!kameraZieh.bewegt && Math.hypot(e.clientX - kameraZieh.x, e.clientY - kameraZieh.y) < 10) return;
+    kameraZieh.bewegt = true;
+    buehne.kameraDrehen(-(e.clientX - kameraZieh.lx) * 0.009, (e.clientY - kameraZieh.ly) * 0.006);
+    kameraZieh.lx = e.clientX;
+    kameraZieh.ly = e.clientY;
+    zeigeKameraKnopf();
+    return;
+  }
+  if (!zieh || e.pointerId !== zieh.id || spiel.feuerModus || spiel.sperre) return;
   if (!zieh.aktiv && Math.hypot(e.clientX - zieh.x, e.clientY - zieh.y) < 10) return;
   if (!zieh.aktiv) { zieh.aktiv = true; buehne.hebe(zieh.start); vibriere(8); }
   buehne.ziehe(e.clientX, e.clientY);
   const ueber = buehne.treffer(e.clientX, e.clientY).flaeche;
   if (ueber !== zieh.ueber) { zieh.ueber = ueber; markiere(ueber && ueber !== zieh.start ? ueber : null); }
 });
-spielEl.addEventListener('pointerup', async (e) => {
+async function fingerWeg(e) {
+  finger.delete(e.pointerId);
+  if (finger.size < 2) geste = null;
+  if (nachGeste) { if (!finger.size) nachGeste = false; zieh = null; kameraZieh = null; return; }
+  if (kameraZieh && e.pointerId === kameraZieh.id) {
+    const k = kameraZieh;
+    kameraZieh = null;
+    if (k.bewegt || k.gesperrt || e.type === 'pointercancel') return;
+    // nur angetippt: Zug ausführen oder Auswahl aufheben
+    if (spiel.auswahl && k.feld && spiel.ziele.some((m) => m.nach === k.feld)) await fuehreAus(spiel.auswahl, k.feld);
+    else if (spiel.auswahl) entwaehle();
+    return;
+  }
   if (!zieh || e.pointerId !== zieh.id) return;
   const z = zieh;
   zieh = null;
   if (z.aktiv) {
-    const ziel = buehne.treffer(e.clientX, e.clientY).flaeche;
+    const ziel = e.type === 'pointercancel' ? null : buehne.treffer(e.clientX, e.clientY).flaeche;
     if (ziel && spiel.ziele.some((m) => m.nach === ziel)) await fuehreAus(z.start, ziel, { gezogen: true });
     else { buehne.zurueck(z.start); markiere(); }
     return;
   }
-  const feld = z.start;
-  if (spiel.auswahl && spiel.auswahl !== feld && spiel.ziele.some((m) => m.nach === feld)) { await fuehreAus(spiel.auswahl, feld); return; }
-  if (z.eigene) { if (z.war) entwaehle(); return; }
-  if (spiel.auswahl) entwaehle();
-});
-spielEl.addEventListener('pointercancel', () => {
-  if (zieh?.aktiv) buehne.zurueck(zieh.start);
-  zieh = null;
-  markiere();
-});
+  if (z.war && e.type !== 'pointercancel') entwaehle();
+}
+spielEl.addEventListener('pointerup', fingerWeg);
+spielEl.addEventListener('pointercancel', fingerWeg);
 spielEl.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // =====================================================================
@@ -814,6 +863,10 @@ document.addEventListener('click', (e) => {
       daten.einst.satz = k.dataset.wert; speichere(); klang.umwandlung();
       wechsleSatz(daten.einst.satz);
       zeigeEinstellungen();
+      break;
+    case 'kamera-reset':
+      klang.knopf();
+      buehne?.kameraZurueck().then(zeigeKameraKnopf);
       break;
     case 'himmel':
       daten.einst.nacht = k.dataset.wert === 'nacht'; speichere(); klang.wahl();
