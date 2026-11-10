@@ -134,7 +134,7 @@ svg { display: block; overflow: visible; }
 .g-wert { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--akzent-hell); font-size: 15px; }
 
 .st-feld { position: relative; flex: 1; min-height: 240px; display: grid; place-items: center; perspective: 900px; }
-.st-karte { width: min(100%, 520px, 52vh); aspect-ratio: 1; }
+.st-karte { width: min(100%, 640px, 64vh); aspect-ratio: 540 / 420; }
 .st-koerper { transform-style: preserve-3d; animation: drehen 14s ease-in-out infinite alternate; transform-origin: 50% 50%; }
 @keyframes drehen { from { transform: rotateY(-14deg) rotateX(6deg); } to { transform: rotateY(14deg) rotateX(-4deg); } }
 .st-knoten { cursor: pointer; }
@@ -143,9 +143,9 @@ svg { display: block; overflow: visible; }
 .st-knoten .punkt { fill: #fff; transition: r .3s; }
 .st-knoten.zu .punkt { fill: #4a4c55; }
 .st-knoten.gewaehlt .punkt { fill: var(--akzent-hell); filter: drop-shadow(0 0 6px var(--akzent)); }
-.st-knoten text { fill: #fff; font-size: 13px; letter-spacing: .14em; font-weight: 500; text-transform: uppercase; }
-.st-knoten.zu text { fill: #5c5e68; }
-.st-knoten.gewaehlt text { fill: var(--akzent-hell); font-size: 15px; font-weight: 700; }
+.st-knoten text { fill: #fff; font-size: 16px; letter-spacing: .12em; font-weight: 500; text-transform: uppercase; }
+.st-knoten.zu text { fill: #6a6c76; }
+.st-knoten.gewaehlt text { fill: var(--akzent-hell); font-size: 18px; font-weight: 700; }
 @keyframes pulsRing { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.9); opacity: 0; } }
 .st-ringe { position: absolute; left: 50%; bottom: 2%; width: min(130%, 680px); aspect-ratio: 3; transform: translateX(-50%) rotateX(68deg); pointer-events: none; opacity: .9; }
 .st-ringe circle { fill: none; transform-origin: center; transform-box: fill-box; }

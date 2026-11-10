@@ -31,6 +31,8 @@ export function baueBrett(ziel, { spalten, zeilen = spalten, muster = () => '', 
   }
   szene.append(brett);
   ziel.append(szene);
+  // Nach dem Einflug die Animation entfernen – solange sie anliegt, zeichnet der Browser alles flach (kein 3D)
+  brett.addEventListener('animationend', (e) => { if (e.target === brett) brett.classList.remove('rein'); });
 
   // Größe an den freien Platz anpassen (auch beim Drehen des Handys)
   const verh = spalten / (zeilen * hoch);

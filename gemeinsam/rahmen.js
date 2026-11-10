@@ -92,7 +92,7 @@ export function starteApp(def) {
       <div class="g-kopf"><button class="rund" data-zurueck aria-label="Zurück">${I.zurueck}</button><div class="g-titel"><span>Stufen</span></div><div class="g-wert" id="st-punkte"></div></div>
       <div class="st-feld">
         <svg class="st-ringe" viewBox="0 0 600 200"><circle class="r2" cx="300" cy="100" r="96"/><circle class="r1" cx="300" cy="100" r="84"/><circle class="r3" cx="300" cy="100" r="70"/></svg>
-        <svg class="st-karte" viewBox="0 0 400 400" id="st-karte"></svg>
+        <svg class="st-karte" viewBox="-70 -10 540 420" id="st-karte"></svg>
       </div>
       <div class="st-panel">
         <div class="st-zeile"><div class="st-code" id="st-code"></div><div class="st-name"><b id="st-name"></b><div class="sterne" id="st-sterne"></div></div><div class="st-schild">${I.schild}</div></div>
@@ -310,7 +310,7 @@ export function starteApp(def) {
       ['Sterne', `${Object.values(d.sterne).reduce((a, b) => a + b, 0)} / ${def.stufen.length * 3}`],
       ...(def.zweiSpieler ? [['Duelle zu zweit', zahl(s.duelle)]] : []),
       ['Spielzeit', `${Math.floor(s.zeit / 60)} min`],
-      ...(def.statistik || []).filter((x) => s[x.key] !== undefined).map((x) => [x.name, x.format ? x.format(s[x.key]) : zahl(s[x.key])]),
+      ...(def.statistik || []).filter((x) => s['x_' + x.key] !== undefined).map((x) => [x.name, x.format ? x.format(s['x_' + x.key]) : zahl(s['x_' + x.key])]),
     ];
     $('#t-panel').innerHTML = `
       <div class="s-metriken"><div><small>Siege</small><b class="pink">${zahl(s.siege)}</b></div><div><small>Siegquote</small><b class="tuerk">${quote} %</b></div></div>
@@ -367,12 +367,13 @@ export function starteApp(def) {
         if (stufeJetzt === d.frei && d.frei < def.stufen.length) { d.frei++; neuFrei = true; d.gewaehlt = d.frei; }
       } else if (erg.sieg === false) { s.niederlagen++; s.serie = 0; }
       else { s.remis++; }
-      // eigene Werte des Spiels (Bestzeit usw.)
+      // eigene Werte des Spiels (Bestzeit usw.) – mit Vorsilbe „x_“, damit sie nie die eingebauten Werte überschreiben
       for (const x of def.statistik || []) {
         const v = erg.extra?.[x.key]; if (v === undefined) continue;
-        if (x.art === 'min') s[x.key] = s[x.key] === undefined ? v : Math.min(s[x.key], v);
-        else if (x.art === 'max') s[x.key] = Math.max(s[x.key] ?? -Infinity, v);
-        else s[x.key] = (s[x.key] || 0) + v;
+        const k = 'x_' + x.key;
+        if (x.art === 'min') s[k] = s[k] === undefined ? v : Math.min(s[k], v);
+        else if (x.art === 'max') s[k] = Math.max(s[k] ?? -Infinity, v);
+        else s[k] = (s[k] || 0) + v;
       }
     }
     speichern();

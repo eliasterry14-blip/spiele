@@ -1,0 +1,111 @@
+/* GRID WARS – schwarzes Glasbrett, kühles Licht, Würfel mit Kanten in Spielerfarbe (wie das Cover) */
+
+/* ——— Brett ——— */
+.gw-brett { --k: 50px; --d: max(3px, calc(var(--k) * .072));
+  background: linear-gradient(160deg, #0e1119 0%, #07080c 55%, #0b0a12 100%) !important;
+  border-color: rgba(214, 228, 255, .3) !important;
+  box-shadow: 0 50px 80px -30px rgba(0, 0, 0, .95), 0 0 0 1px rgba(214, 228, 255, .05), 0 0 90px -24px rgba(214, 228, 255, .32) !important; }
+.gw-brett::before { background: linear-gradient(180deg, #1b2030, #050507) !important; border-color: rgba(214, 228, 255, .2) !important; height: 12px !important; }
+.gw-brett::after { background: radial-gradient(closest-side, rgba(214, 228, 255, .13), transparent) !important; }
+.gw-brett .feld { border: 0; transition: background .6s; }
+.gw-brett .feld.gw-a { background: rgba(130, 160, 255, .028); }
+.gw-brett .feld.gw-b { background: rgba(255, 255, 255, .008); }
+.gw-brett .feld.gw-erobert { --c: var(--eins); background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 30%, transparent), color-mix(in srgb, var(--c) 7%, transparent)); }
+.gw-brett .feld.gw-erobert.p1 { --c: var(--zwei); }
+
+.gw-netz { position: absolute; inset: 0; transform-style: preserve-3d; pointer-events: none; }
+.gw-netz.dran0 { --c: var(--eins); }
+.gw-netz.dran1 { --c: var(--zwei); }
+
+/* ——— Linien ——— */
+.gw-linie { position: absolute; pointer-events: none; transform: translateZ(1px); }
+.gw-linie.w { height: 1px; margin-top: -.5px; background: repeating-linear-gradient(90deg, rgba(214, 228, 255, .2) 0 2px, transparent 2px 7px); }
+.gw-linie.s { width: 1px; margin-left: -.5px; background: repeating-linear-gradient(180deg, rgba(214, 228, 255, .2) 0 2px, transparent 2px 7px); }
+.gw-linie::after { content: ""; position: absolute; border-radius: 99px; opacity: 0; transition: opacity .2s;
+  background: color-mix(in srgb, var(--c) 82%, #fff);
+  box-shadow: 0 0 calc(var(--k) * .2) color-mix(in srgb, var(--c) 70%, transparent), 0 0 3px var(--c); }
+.gw-linie.w::after { left: 0; right: 0; top: 50%; height: var(--d); transform: translateY(-50%); }
+.gw-linie.s::after { top: 0; bottom: 0; left: 50%; width: var(--d); transform: translateX(-50%); }
+.gw-linie.p0 { --c: var(--eins); }
+.gw-linie.p1 { --c: var(--zwei); }
+.gw-linie.an { background: none; }
+.gw-linie.an::after { opacity: 1; }
+.gw-linie.an.w::after { animation: ziehW .38s cubic-bezier(.2, .8, .2, 1) both; }
+.gw-linie.an.s::after { animation: ziehS .38s cubic-bezier(.2, .8, .2, 1) both; }
+.gw-linie.neu.w::after { background: linear-gradient(180deg, var(--c), #fff 50%, var(--c)); }
+.gw-linie.neu.s::after { background: linear-gradient(90deg, var(--c), #fff 50%, var(--c)); }
+.gw-linie.neu::after { box-shadow: 0 0 calc(var(--k) * .32) color-mix(in srgb, var(--c) 85%, transparent), 0 0 4px #fff; }
+@keyframes ziehW { from { transform: translateY(-50%) scaleX(0); } }
+@keyframes ziehS { from { transform: translateX(-50%) scaleY(0); } }
+/* Vorschau (antippen / Maus darüber / KI zielt) */
+.gw-netz.frei .gw-linie.schwebt::after { opacity: .42; }
+.gw-netz.frei .gw-linie.wahl::after { opacity: .75; animation: wahlPuls .8s ease-in-out infinite alternate; }
+.gw-linie.ki-ziel::after { opacity: .6; animation: wahlPuls .3s ease-in-out infinite alternate; }
+@keyframes wahlPuls { from { opacity: .35; } to { opacity: .9; } }
+
+/* Tipp-Zonen: Rauten um jede Linie – zusammen decken sie das ganze Brett ab */
+.gw-zone { position: absolute; width: calc(var(--k) * .7071); height: calc(var(--k) * .7071);
+  transform: translate(-50%, -50%) translateZ(3px) rotate(45deg); pointer-events: auto; cursor: pointer; }
+
+/* ——— 3D-Quader (Pfosten + Würfel) ——— */
+.gw-quader { position: absolute; width: var(--qb); height: var(--qb); margin: calc(var(--qb) / -2) 0 0 calc(var(--qb) / -2); transform-style: preserve-3d; pointer-events: none; }
+.gw-quader > i { position: absolute; display: block; }
+.gw-quader > .o { inset: 0; transform: translateZ(var(--qh)); }
+.gw-quader > .v { left: 0; right: 0; bottom: 0; height: var(--qh); transform-origin: 50% 100%; transform: rotateX(-90deg); }
+.gw-quader > .h { left: 0; right: 0; top: 0; height: var(--qh); transform-origin: 50% 0; transform: rotateX(90deg); }
+.gw-quader > .l { left: 0; top: 0; bottom: 0; width: var(--qh); transform-origin: 0 50%; transform: rotateY(-90deg); }
+.gw-quader > .r { right: 0; top: 0; bottom: 0; width: var(--qh); transform-origin: 100% 50%; transform: rotateY(90deg); }
+
+/* Pfosten: kleine leuchtende Säulen an jedem Punkt */
+.gw-pfosten { --qb: max(7px, calc(var(--k) * .13)); --qh: calc(var(--qb) * 2.1); --c: #d6e4ff; animation: pfostenRein .6s cubic-bezier(.2, .9, .3, 1.3) both; }
+.gw-pfosten::before { content: ""; position: absolute; inset: -110%; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 30%, transparent), transparent); }
+.gw-pfosten > i { background: linear-gradient(180deg, #aebbd6, #3a4256); }
+.gw-pfosten > .l, .gw-pfosten > .r { background: linear-gradient(90deg, #6c7894, #232836); }
+.gw-pfosten > .o { background: radial-gradient(circle at 40% 35%, #fff, color-mix(in srgb, var(--c) 70%, #fff) 60%, var(--c)); box-shadow: 0 0 8px 1px color-mix(in srgb, var(--c) 80%, transparent); }
+.gw-pfosten.p0 { --c: var(--eins); }
+.gw-pfosten.p1 { --c: var(--zwei); }
+.gw-pfosten.blitz > .o { animation: pfostenBlitz .7s ease-out; }
+/* Achtung: keine opacity in Animationen von 3D-Behältern – das macht sie flach */
+@keyframes pfostenRein { from { transform: translateZ(40px) scale3d(.2, .2, .2); } }
+@keyframes pfostenBlitz { 0% { box-shadow: 0 0 22px 6px var(--c); background: #fff; } }
+
+/* Würfel: wächst aus dem Brett – schwarz mit Kanten in Spielerfarbe */
+.gw-wuerfel { --c: var(--eins); --qb: calc(var(--k) * .56); --qh: var(--qb); left: 50%; top: 50%;
+  animation: wachsen .8s cubic-bezier(.2, .9, .3, 1.15) both; }
+.gw-wuerfel.p1 { --c: var(--zwei); }
+.gw-wuerfel > i { background: linear-gradient(180deg, #0d0e13, #040405); border: 1.5px solid var(--c);
+  box-shadow: inset 0 0 calc(var(--k) * .1) color-mix(in srgb, var(--c) 40%, transparent); }
+.gw-wuerfel > .l, .gw-wuerfel > .r { background: linear-gradient(90deg, #08090c, #020203); }
+.gw-wuerfel > .o { background: linear-gradient(135deg, #1a1d26, #08090c 70%);
+  box-shadow: 0 0 calc(var(--k) * .28) color-mix(in srgb, var(--c) 50%, transparent), inset 0 0 calc(var(--k) * .14) color-mix(in srgb, var(--c) 45%, transparent); }
+.gw-wuerfel > .o::after { content: ""; position: absolute; inset: 28%; border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); transform: rotate(45deg); }
+@keyframes wachsen { from { transform: scale3d(.2, .2, .01); } to { transform: none; } }
+.gw-brett.sieg-p0 .gw-wuerfel.p0 > .o, .gw-brett.sieg-p1 .gw-wuerfel.p1 > .o { animation: siegGlut 1.1s ease-in-out infinite alternate; }
+@keyframes siegGlut { to { background: linear-gradient(135deg, color-mix(in srgb, var(--c) 55%, #000), #0b0c10 75%); box-shadow: 0 0 calc(var(--k) * .55) var(--c), inset 0 0 calc(var(--k) * .2) var(--c); } }
+
+/* +1 schwebt über dem eroberten Kästchen */
+.gw-plus { --c: var(--eins); position: absolute; left: 50%; bottom: 50%; font-weight: 800; font-size: max(12px, calc(var(--k) * .3)); color: var(--c); text-shadow: 0 0 10px var(--c);
+  transform-origin: 50% 100%; pointer-events: none; animation: plusHoch 1.1s ease-out forwards; }
+.gw-plus.p1 { --c: var(--zwei); }
+@keyframes plusHoch {
+  from { opacity: 0; transform: translateX(-50%) translateZ(calc(var(--k) * .55)) rotateX(calc(var(--kipp) * -1)); }
+  25% { opacity: 1; }
+  to { opacity: 0; transform: translateX(-50%) translateZ(calc(var(--k) * 1.35)) rotateX(calc(var(--kipp) * -1)); }
+}
+
+/* ——— Zugleiste ——— */
+.gw-zug span b { min-width: 1.2em; text-align: right; }
+.gw-leiste { padding-top: 6px; }
+.gw-leiste .knopf { min-width: 170px; }
+
+/* ——— PC: Spieler-Karten links und rechts vom Brett ——— */
+#app.breit .gw-buehne { flex-direction: column; }
+#app.breit .gw-buehne .szene { margin: 0 200px; }
+#app.breit .gw-zug { position: absolute; inset: 0; z-index: 2; margin: 0; justify-content: space-between; align-items: center; pointer-events: none; }
+#app.breit .gw-zug span { flex-direction: column; align-items: flex-start; gap: 10px; width: 170px; padding: 18px 22px 16px; font-size: 13px; letter-spacing: .22em; text-transform: uppercase;
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px); }
+#app.breit .gw-zug span b { order: 3; font-size: 64px; font-weight: 200; line-height: 1; letter-spacing: 0; text-align: left; color: #fff; }
+#app.breit .gw-zug span i { width: 12px; height: 12px; }
+#app.breit .gw-zug span + span { align-items: flex-end; }
+#app.breit .gw-zug span + span b { text-align: right; }
+#app.breit .gw-zug span.dran b { text-shadow: 0 0 24px var(--c); }

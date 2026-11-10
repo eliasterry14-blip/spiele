@@ -1,0 +1,121 @@
+/* SHARDS – dunkles Brett mit eisblauem Licht, Spielsteine aus facettiertem Glas */
+
+/* ——— Brett (dezent) ——— */
+.sh-brett { --k: 32px; --hz: calc(var(--k) * .28); --c: var(--eins);
+  background: linear-gradient(150deg, #0d1622 0%, #070a10 55%, #0b0e18 100%) !important;
+  border-color: rgba(124, 200, 255, .32) !important;
+  box-shadow: 0 50px 80px -30px rgba(0, 0, 0, .95), 0 0 0 1px rgba(124, 200, 255, .06), 0 0 90px -26px rgba(124, 200, 255, .45) !important; }
+.sh-brett.dran1 { --c: var(--zwei); }
+.sh-brett::before { background: linear-gradient(180deg, #16263a, #05070b) !important; border-color: rgba(124, 200, 255, .2) !important; height: 12px !important; }
+.sh-brett::after { background: radial-gradient(closest-side, rgba(124, 200, 255, .16), transparent) !important; }
+.sh-brett .feld { border: 0; box-shadow: inset 0 0 0 .5px rgba(124, 200, 255, .1); }
+.sh-brett .feld.sh-a { background: rgba(124, 200, 255, .03); }
+
+/* mögliche Ansatz-Ecken des Spielers, der dran ist */
+.sh-brett .feld.sh-e::before { content: ""; position: absolute; inset: 37%; border: 1px solid color-mix(in srgb, var(--c) 80%, #fff); background: color-mix(in srgb, var(--c) 30%, transparent);
+  transform: translateZ(1px) rotate(45deg); box-shadow: 0 0 8px var(--c); animation: eckePuls 1.8s ease-in-out infinite; pointer-events: none; }
+@keyframes eckePuls { 50% { opacity: .35; transform: translateZ(1px) rotate(45deg) scale(.7); } }
+
+/* Startecken */
+.sh-start { --c: var(--eins); position: absolute; inset: 16%; border: 1.5px solid var(--c); transform: translateZ(1px) rotate(45deg); box-shadow: 0 0 12px var(--c), inset 0 0 8px var(--c);
+  pointer-events: none; transition: opacity .4s, transform .4s; }
+.sh-start::after { content: ""; position: absolute; inset: 30%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+.sh-start.p1 { --c: var(--zwei); }
+.sh-start.weg { opacity: 0; transform: translateZ(1px) rotate(45deg) scale(.3); }
+
+/* ——— Glasstein: Deckel aus zwei Splittern + Seitenwände ——— */
+.sh-zelle { --c: var(--eins); position: absolute; inset: 0; transform-style: preserve-3d; pointer-events: none; }
+.sh-zelle.p1 { --c: var(--zwei); }
+.sh-zelle > i { position: absolute; display: block; }
+.sh-zelle > .sv { left: 0; right: 0; bottom: 0; height: var(--hz); transform-origin: 50% 100%; transform: rotateX(-90deg); }
+.sh-zelle > .sn { left: 0; right: 0; top: 0; height: var(--hz); transform-origin: 50% 0; transform: rotateX(90deg); }
+.sh-zelle > .sw { left: 0; top: 0; bottom: 0; width: var(--hz); transform-origin: 0 50%; transform: rotateY(-90deg); }
+.sh-zelle > .so { right: 0; top: 0; bottom: 0; width: var(--hz); transform-origin: 100% 50%; transform: rotateY(90deg); }
+.sh-zelle > .sv, .sh-zelle > .sn { background: linear-gradient(180deg, color-mix(in srgb, var(--c) 55%, transparent), color-mix(in srgb, var(--c) 22%, rgba(2, 4, 10, .8))); border-top: 1px solid rgba(240, 250, 255, .8); }
+.sh-zelle > .sw, .sh-zelle > .so { background: linear-gradient(90deg, color-mix(in srgb, var(--c) 22%, rgba(2, 4, 10, .8)), color-mix(in srgb, var(--c) 45%, transparent)); }
+.sh-zelle > .sw { border-right: 1px solid rgba(240, 250, 255, .55); }
+.sh-zelle > .so { border-left: 1px solid rgba(240, 250, 255, .55); }
+.sh-zelle > .deckel { inset: 0; transform: translateZ(var(--hz)); transform-style: preserve-3d; }
+.sh-zelle .deckel > b { position: absolute; inset: 0; display: block; }
+/* Glanz läuft über das ganze Brett durch (pro Feld verschoben) – so wirkt ein Stein wie EIN Stück Glas */
+.sh-zelle .t1, .sh-zelle .t2 {
+  background-image: linear-gradient(118deg, rgba(255, 255, 255, 0) 14%, rgba(255, 255, 255, .3) 22%, rgba(255, 255, 255, 0) 31%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, .17) 61%, rgba(255, 255, 255, 0) 68%, rgba(255, 255, 255, 0) 84%, rgba(255, 255, 255, .12) 89%, rgba(255, 255, 255, 0) 94%), var(--fuell);
+  background-size: calc(var(--k) * 10) calc(var(--k) * 10), 100% 100%;
+  background-position: calc(var(--k) * var(--x) * -1) calc(var(--k) * var(--y) * -1), 0 0; }
+.sh-zelle .t1 { clip-path: polygon(0 0, 100% 0, 0 100%); --fuell: linear-gradient(color-mix(in srgb, var(--c) 52%, rgba(255, 255, 255, .14)), color-mix(in srgb, var(--c) 52%, rgba(255, 255, 255, .14))); }
+.sh-zelle .t2 { clip-path: polygon(100% 0, 100% 100%, 0 100%); --fuell: linear-gradient(color-mix(in srgb, var(--c) 42%, transparent), color-mix(in srgb, var(--c) 42%, transparent)); }
+.sh-zelle .kante { border: 1.5px solid rgba(240, 250, 255, .95);
+  background: linear-gradient(45deg, transparent calc(50% - .5px), rgba(255, 255, 255, .26) 50%, transparent calc(50% + .5px)); }
+.sh-zelle.vn .kante { border-top-color: transparent; }
+.sh-zelle.vs .kante { border-bottom-color: transparent; }
+.sh-zelle.vw .kante { border-left-color: transparent; }
+.sh-zelle.vo .kante { border-right-color: transparent; }
+
+/* Einflug: Splitter fliegen zusammen, dann rastet der Stein mit einem Blitz ein
+   (opacity nur an Blättern – an 3D-Behältern würde sie alles flach machen) */
+.sh-zelle.neu .t1, .sh-zelle.neu .t2 { animation: splitter .78s cubic-bezier(.16, .84, .24, 1) both; animation-delay: var(--d); }
+.sh-zelle.neu .t2 { animation-delay: calc(var(--d) + 70ms); }
+.sh-zelle.neu .kante { animation: einrasten .7s ease-out both; animation-delay: calc(var(--d) + 640ms); }
+.sh-zelle.neu > .sv, .sh-zelle.neu > .sn, .sh-zelle.neu > .sw, .sh-zelle.neu > .so { animation: seiteRein .35s ease-out both; animation-delay: calc(var(--d) + 560ms); }
+@keyframes splitter {
+  from { opacity: 0; transform: translate3d(var(--dx), var(--dy), var(--dz)) rotateZ(var(--r)) rotateX(var(--rx)) scale(.7); }
+  25% { opacity: .9; }
+  to { opacity: 1; transform: none; }
+}
+@keyframes einrasten {
+  from { opacity: 0; }
+  25% { opacity: 1; border-color: #fff; box-shadow: 0 0 calc(var(--k) * .6) #fff, inset 0 0 calc(var(--k) * .5) #fff; }
+}
+@keyframes seiteRein { from { opacity: 0; } }
+
+/* Sieger-Steine leuchten am Ende */
+.sh-brett.sieg-p0 .sh-zelle.p0 .kante, .sh-brett.sieg-p1 .sh-zelle.p1 .kante { animation: siegGlas 1.2s ease-in-out infinite alternate; }
+@keyframes siegGlas { to { box-shadow: 0 0 calc(var(--k) * .45) var(--c), inset 0 0 calc(var(--k) * .4) color-mix(in srgb, var(--c) 70%, #fff); } }
+
+/* Vorschau (gültig leuchtet, ungültig rot) */
+.sh-geist { --c: var(--eins); position: absolute; inset: 0; transform: translateZ(calc(var(--hz) + 1px)); pointer-events: none;
+  border: 1.5px solid #fff; background: color-mix(in srgb, var(--c) 34%, transparent);
+  box-shadow: 0 0 calc(var(--k) * .35) color-mix(in srgb, var(--c) 70%, transparent), inset 0 0 calc(var(--k) * .25) color-mix(in srgb, var(--c) 60%, transparent);
+  animation: geistPuls .9s ease-in-out infinite alternate; }
+.sh-geist.p1 { --c: var(--zwei); }
+.sh-geist.nein { --c: var(--schlecht); border-color: var(--schlecht); background: color-mix(in srgb, var(--schlecht) 22%, transparent); animation: none; opacity: .85; }
+.sh-geist.vn { border-top-color: transparent; }
+.sh-geist.vs { border-bottom-color: transparent; }
+.sh-geist.vw { border-left-color: transparent; }
+.sh-geist.vo { border-right-color: transparent; }
+@keyframes geistPuls { from { opacity: .55; } to { opacity: 1; } }
+
+/* ——— Form-Leiste + Knöpfe ——— */
+.sh-seite { display: contents; }
+.sh-zug { order: 0; }
+.sh-buehne .szene { order: 1; }
+.sh-ablage { --c: var(--eins); order: 2; flex: none; display: flex; gap: 8px; overflow-x: auto; padding: 10px 2px 2px; margin: 0 -10px; padding-left: 10px; padding-right: 10px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch; transition: opacity .3s; }
+.sh-ablage::-webkit-scrollbar { display: none; }
+.sh-ablage.p1 { --c: var(--zwei); }
+.sh-form { flex: none; width: 56px; height: 56px; display: grid; place-items: center; background: rgba(255, 255, 255, .03); border: 1px solid var(--rand2);
+  clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px); transition: background .2s, border-color .2s, transform .15s; animation: formRein .4s cubic-bezier(.2, .9, .3, 1.2) both; }
+.sh-form:active { transform: scale(.92); }
+.sh-form svg { width: 72%; height: 72%; }
+.sh-form rect { fill: color-mix(in srgb, var(--c) 32%, transparent); stroke: rgba(230, 245, 255, .7); stroke-width: .8; }
+.sh-form path { stroke: rgba(255, 255, 255, .3); stroke-width: .5; }
+.sh-form.an { border-color: var(--c); background: color-mix(in srgb, var(--c) 16%, rgba(0, 0, 0, .4)); box-shadow: inset 0 0 18px color-mix(in srgb, var(--c) 35%, transparent); }
+.sh-form.an rect { fill: color-mix(in srgb, var(--c) 60%, transparent); stroke: #fff; filter: drop-shadow(0 0 2px var(--c)); }
+@keyframes formRein { from { transform: translateY(10px); opacity: 0; } }
+.sh-knoepfe { order: 3; padding-top: 10px; }
+.sh-icon { width: 58px; padding: 0; }
+.sh-icon svg { width: 22px; height: 22px; }
+.sh-setzen { min-width: 150px; }
+.sh-buehne.gesperrt .sh-ablage { opacity: .35; pointer-events: none; }
+
+/* ——— PC: Brett links, Seitenleiste rechts ——— */
+#app.breit .sh-buehne { flex-direction: row; gap: 40px; align-items: stretch; }
+#app.breit .sh-buehne .szene { flex: 1; }
+#app.breit .sh-seite { display: flex; flex-direction: column; justify-content: center; gap: 22px; width: 330px; flex: none; }
+#app.breit .sh-zug { justify-content: flex-start; margin: 0; }
+#app.breit .sh-zug span { flex: 1; padding: 12px 16px; font-size: 14px; }
+#app.breit .sh-zug span b { margin-left: auto; font-size: 22px; font-weight: 300; }
+#app.breit .sh-ablage { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; gap: 10px; }
+#app.breit .sh-form { width: 74px; height: 74px; }
+#app.breit .sh-knoepfe { justify-content: flex-start; padding: 0; }
+#app.breit .sh-setzen { flex: 1; }

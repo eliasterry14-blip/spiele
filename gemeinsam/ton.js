@@ -8,18 +8,20 @@ const fertig = new Map();   // Name -> AudioBuffer           (nach dem ersten Ti
 export function setzeTon(wert) { an = wert; }
 export function istAn() { return an; }
 
-// Sounds anmelden: { name: 'pfad/zur/datei.wav' } (Pfad relativ zur Seite des Spiels)
+// Sounds anmelden: { name: 'pfad/zur/datei.wav' } (Pfad relativ zur Seite des Spiels).
+// Ein Spiel darf auch die gemeinsamen Namen (setzen, gut, gegner …) mit eigenen Klängen ERSETZEN.
 export function ladeKlaenge(liste) {
   for (const [name, datei] of Object.entries(liste)) {
-    if (roh.has(name)) continue;
+    fertig.delete(name);
     roh.set(name, fetch(datei).then((r) => (r.ok ? r.arrayBuffer() : null)).catch(() => null));
     if (ctx) entpacke(name);
   }
 }
 function entpacke(name) {
-  roh.get(name)?.then((daten) => {
+  const p = roh.get(name);
+  p?.then((daten) => {
     if (!daten || fertig.has(name)) return;
-    ctx.decodeAudioData(daten.slice(0)).then((b) => fertig.set(name, b)).catch(() => {});
+    ctx.decodeAudioData(daten.slice(0)).then((b) => { if (roh.get(name) === p) fertig.set(name, b); }).catch(() => {});
   });
 }
 ladeKlaenge({
