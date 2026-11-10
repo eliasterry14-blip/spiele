@@ -17,12 +17,27 @@
 </head>
 <body>
 <div id="app">
+  <div class="buehne" id="buehne"></div>
+  <div class="vignette" aria-hidden="true"></div>
 
   <!-- ===================== HAUPTMENÜ ===================== -->
   <section class="seite" id="s-menue">
-    <div class="himmel"><div class="sterne" id="sterne"></div></div>
-    <!-- Emblem: Anker mit Schach-König als Schaft (eigene Zeichnung) -->
-    <div class="emblem" aria-hidden="true">
+    <div class="km-titel">
+      <h1>Naval Chess</h1>
+      <p>Schach auf hoher See</p>
+    </div>
+    <nav class="km-liste">
+      <button class="km-punkt" data-aktion="spielen" style="--i:0"><span>Spielen</span><small id="spielen-info"></small></button>
+      <button class="km-punkt" data-aktion="ki-wahl" style="--i:1"><span>Gegen Computer</span></button>
+      <button class="km-punkt" data-aktion="zwei-wahl" style="--i:2"><span>Zwei Spieler</span></button>
+      <button class="km-punkt" data-aktion="einstellungen" style="--i:3"><span>Einstellungen</span></button>
+    </nav>
+    <div class="km-version">Version 1.2</div>
+  </section>
+
+  <!-- Startbildschirm: Emblem zeichnet sich, dann geht die Laterne an -->
+  <div class="intro" id="intro">
+    <div class="intro-emblem" aria-hidden="true">
       <svg viewBox="0 0 200 262">
         <defs>
           <linearGradient id="em-silber" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#e3ebf0"/><stop offset="1" stop-color="#a9b9c6"/></linearGradient>
@@ -43,46 +58,16 @@
           <path class="em-teil" pathLength="1" d="M86 230l14 28 14-28z"/>
         </g>
         <g class="em-funken">
-          <path style="--d:.2s" transform="translate(100 22) scale(1.2)" d="M0-5L1.2-1.2 5 0 1.2 1.2 0 5-1.2 1.2-5 0-1.2-1.2z"/>
-          <path style="--d:1.1s" transform="translate(52 71)" d="M0-5L1.2-1.2 5 0 1.2 1.2 0 5-1.2 1.2-5 0-1.2-1.2z"/>
-          <path style="--d:2.3s" transform="translate(150 70) scale(.8)" d="M0-5L1.2-1.2 5 0 1.2 1.2 0 5-1.2 1.2-5 0-1.2-1.2z"/>
-          <path style="--d:.7s" transform="translate(100 150) scale(1.4)" d="M0-5L1.2-1.2 5 0 1.2 1.2 0 5-1.2 1.2-5 0-1.2-1.2z"/>
-          <path style="--d:1.8s" transform="translate(38 196) scale(.9)" d="M0-5L1.2-1.2 5 0 1.2 1.2 0 5-1.2 1.2-5 0-1.2-1.2z"/>
-          <path style="--d:2.9s" transform="translate(166 190) scale(1.1)" d="M0-5L1.2-1.2 5 0 1.2 1.2 0 5-1.2 1.2-5 0-1.2-1.2z"/>
-          <path style="--d:1.4s" transform="translate(100 244) scale(.8)" d="M0-5L1.2-1.2 5 0 1.2 1.2 0 5-1.2 1.2-5 0-1.2-1.2z"/>
-          <path style="--d:.4s" transform="translate(100 76) scale(.8)" d="M0-5L1.2-1.2 5 0 1.2 1.2 0 5-1.2 1.2-5 0-1.2-1.2z"/>
+          <path style="--d:.1s" transform="translate(100 22) scale(1.2)" d="M0-5L1.2-1.2 5 0 1.2 1.2 0 5-1.2 1.2-5 0-1.2-1.2z"/>
+          <path style="--d:.6s" transform="translate(120 150) scale(1.4)" d="M0-5L1.2-1.2 5 0 1.2 1.2 0 5-1.2 1.2-5 0-1.2-1.2z"/>
+          <path style="--d:1.1s" transform="translate(38 196) scale(.9)" d="M0-5L1.2-1.2 5 0 1.2 1.2 0 5-1.2 1.2-5 0-1.2-1.2z"/>
+          <path style="--d:.9s" transform="translate(152 70) scale(.8)" d="M0-5L1.2-1.2 5 0 1.2 1.2 0 5-1.2 1.2-5 0-1.2-1.2z"/>
         </g>
       </svg>
     </div>
-    <div class="logo-schiff" id="logo-schiff"></div>
-    <div class="logo">
-      <h1><span class="l1">NAVAL</span><span class="l2">CHESS</span></h1>
-      <div class="logo-linie"><i></i><svg viewBox="0 0 24 24"><path d="M12 3v15m-7-5a7 7 0 0 0 14 0M8 7h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="4.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/></svg><i></i></div>
-    </div>
-    <div class="wellen" aria-hidden="true">
-      <svg class="welle w3" viewBox="0 0 800 60" preserveAspectRatio="none"><path d="M0 30 Q50 14 100 30 T200 30 T300 30 T400 30 T500 30 T600 30 T700 30 T800 30 V60 H0Z"/></svg>
-      <svg class="welle w2" viewBox="0 0 800 60" preserveAspectRatio="none"><path d="M0 30 Q50 18 100 30 T200 30 T300 30 T400 30 T500 30 T600 30 T700 30 T800 30 V60 H0Z"/></svg>
-      <svg class="welle w1" viewBox="0 0 800 60" preserveAspectRatio="none"><path d="M0 30 Q50 20 100 30 T200 30 T300 30 T400 30 T500 30 T600 30 T700 30 T800 30 V60 H0Z"/></svg>
-    </div>
-    <nav class="menue-knoepfe">
-      <button class="mk haupt" data-aktion="spielen" style="--i:0">
-        <span class="mk-icon"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></span>
-        <span class="mk-text"><b>Spielen</b><small id="spielen-info">Gegen Computer</small></span>
-      </button>
-      <button class="mk" data-aktion="ki-wahl" style="--i:1">
-        <span class="mk-icon"><svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 7V4M9.5 12h.01M14.5 12h.01M9.5 15h5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></span>
-        <span class="mk-text"><b>Gegen Computer</b></span><i class="pfeil"></i>
-      </button>
-      <button class="mk" data-aktion="zwei-wahl" style="--i:2">
-        <span class="mk-icon"><svg viewBox="0 0 24 24"><circle cx="8.5" cy="8.5" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="16" cy="9.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3 19c.6-3.3 3-5 5.5-5s4.9 1.7 5.5 5M14 14.3c2.6-.4 5.6.9 6.6 4.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
-        <span class="mk-text"><b>Zwei Spieler</b></span><i class="pfeil"></i>
-      </button>
-      <button class="mk" data-aktion="einstellungen" style="--i:3">
-        <span class="mk-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M5.5 18.5l2.1-2.1M16.4 7.6l2.1-2.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>
-        <span class="mk-text"><b>Einstellungen</b></span><i class="pfeil"></i>
-      </button>
-    </nav>
-  </section>
+    <div class="intro-name">Naval Chess</div>
+    <div class="intro-tipp" aria-hidden="true"></div>
+  </div>
 
   <!-- ===================== SPIEL EINRICHTEN ===================== -->
   <section class="seite" id="s-wahl">
@@ -125,7 +110,6 @@
 
   <!-- ===================== SPIEL ===================== -->
   <section class="seite" id="s-spiel">
-    <div class="buehne" id="buehne"></div>
     <div class="ruf" id="ruf"></div>
     <header class="spiel-kopf">
       <div class="marke"><svg viewBox="0 0 24 24"><path d="M12 3v15m-7-5a7 7 0 0 0 14 0M8 7h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="4.5" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span>NAVAL CHESS</span></div>

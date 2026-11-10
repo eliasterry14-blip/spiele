@@ -2,7 +2,7 @@
 // Weltmaße: ein Feld = 1. Das Brett liegt von x = -4..4 und z = -4..4 auf dem Wasser (y = 0).
 // Linie a liegt bei x = -3.5, Reihe 1 bei z = +3.5 (also bei der Kamera, wenn Weiß unten ist).
 import * as THREE from './vendor/three.module.min.js';
-import { baueSchiff, setzeFlotte, material } from './flotte3d.js';
+import { baueSchiff, setzeFlotte, material, nachtLichter } from './flotte3d.js';
 
 const glatt = (t) => t * t * (3 - 2 * t);
 const zufall = (a, b) => a + Math.random() * (b - a);
@@ -75,6 +75,8 @@ uniform vec3 uRot;
 uniform float uNebelNah;
 uniform float uNebelFern;
 uniform sampler2D uMarken;
+uniform vec3 uLaterne;
+uniform float uLaterneKraft;
 varying vec3 vWelt;
 varying float vHoehe;
 
@@ -110,6 +112,13 @@ void main() {
 
   // Wellenkämme etwas heller (kein fleckiger Schaum)
   farbe += vec3(0.5, 0.75, 0.85) * smoothstep(0.03, 0.08, vHoehe) * 0.06;
+
+  // warmer Schein der Laterne auf den Wellen (Menü)
+  if (uLaterneKraft > 0.001) {
+    vec3 zuL = uLaterne - vWelt;
+    float lg = pow(max(dot(r, normalize(zuL)), 0.0), 40.0) * uLaterneKraft / (1.0 + dot(zuL, zuL) * 0.35);
+    farbe += vec3(1.0, 0.62, 0.28) * lg * 2.2 + vec3(1.0, 0.6, 0.3) * uLaterneKraft * 0.06 / (1.0 + dot(zuL, zuL) * 1.5);
+  }
 
   // Leuchtender Rand um das Brett
   float rand = max(abs(p.x), abs(p.y));
@@ -156,6 +165,113 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
+// ---------- Himmel: Abendverlauf mit Sonne – nachts Sterne, Milchstraße und Mond (alles im Shader) ----------
+const HIMMEL_FRAGMENT = `
+uniform vec3 uOben;
+uniform vec3 uHorizont;
+uniform vec3 uGlut;
+uniform vec3 uSonne;
+uniform float uNacht;
+uniform float uZeit;
+varying vec3 vR;
+float hash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float rauschen(vec3 p) {
+  vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash(i), hash(i + vec3(1.0, 0.0, 0.0)), f.x), mix(hash(i + vec3(0.0, 1.0, 0.0)), hash(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+             mix(mix(hash(i + vec3(0.0, 0.0, 1.0)), hash(i + vec3(1.0, 0.0, 1.0)), f.x), mix(hash(i + vec3(0.0, 1.0, 1.0)), hash(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z);
+}
+float fbm(vec3 p) { float s = 0.0; float a = 0.5; for (int i = 0; i < 5; i++) { s += a * rauschen(p); p *= 2.03; a *= 0.5; } return s; }
+void main() {
+  vec3 r = normalize(vR);
+  float y = r.y;
+  vec3 farbe = mix(uHorizont, uOben, pow(clamp(y, 0.0, 1.0), 0.42));
+  float s = max(dot(r, normalize(uSonne)), 0.0);
+  farbe += uGlut * (pow(s, 900.0) * 4.0 + pow(s, 40.0) * 0.45 + pow(s, 6.0) * 0.18) * (1.0 - uNacht * 0.55);
+  if (uNacht > 0.01) {
+    // Sterne: in jeder kleinen Himmelszelle vielleicht ein Stern, der funkelt
+    vec3 q = r * 230.0;
+    float h = hash(floor(q));
+    float stern = step(0.9962, h) * smoothstep(0.5, 0.05, length(fract(q) - 0.5)) * (0.65 + 0.35 * sin(uZeit * (1.5 + h * 5.0) + h * 50.0));
+    // Milchstraße: helles, wolkiges Band schräg über den Himmel
+    vec3 achse = normalize(vec3(0.62, 0.42, 0.66));
+    float band = 1.0 - smoothstep(0.0, 0.34, abs(dot(r, achse)));
+    float wolke = fbm(r * 5.0 + 3.0) * band;
+    float staub = step(0.982, hash(floor(r * 480.0))) * band;
+    vec3 nacht = farbe + vec3(0.72, 0.78, 0.95) * (pow(wolke, 1.6) * 0.55 + staub * 0.45) + vec3(1.0, 0.98, 0.95) * stern * 1.5;
+    farbe = mix(farbe, nacht, uNacht * smoothstep(-0.01, 0.1, y));
+  }
+  farbe = mix(farbe, uHorizont, smoothstep(0.035, -0.04, y));
+  gl_FragColor = vec4(farbe, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`;
+
+// ---------- Das Boot im Menü: Bug mit hohem Steven, Bank und Laterne (Blick aus dem Boot) ----------
+function baueBoot() {
+  const gruppe = new THREE.Group();
+  const holz = new THREE.MeshStandardMaterial({ color: '#2a190e', roughness: 0.38, metalness: 0.1 });
+  const holzHell = new THREE.MeshStandardMaterial({ color: '#46301d', roughness: 0.45 });
+  const messing = new THREE.MeshStandardMaterial({ color: '#c9974a', roughness: 0.28, metalness: 0.9 });
+  // Umriss von oben (Spitze vorne = +y, wird zu -z) – als Ring: außen Bordwand, innen offen
+  const aussen = new THREE.Shape();
+  aussen.moveTo(-0.72, -1.9); aussen.lineTo(-0.68, -0.5); aussen.quadraticCurveTo(-0.56, 0.6, 0, 1.55); aussen.quadraticCurveTo(0.56, 0.6, 0.68, -0.5); aussen.lineTo(0.72, -1.9); aussen.lineTo(-0.72, -1.9);
+  const innen = new THREE.Path();
+  innen.moveTo(-0.63, -1.8); innen.lineTo(-0.59, -0.5); innen.quadraticCurveTo(-0.47, 0.5, 0, 1.36); innen.quadraticCurveTo(0.47, 0.5, 0.59, -0.5); innen.lineTo(0.63, -1.8); innen.lineTo(-0.63, -1.8);
+  aussen.holes.push(innen);
+  const wand = new THREE.ExtrudeGeometry(aussen, { depth: 0.44, bevelEnabled: true, bevelSize: 0.012, bevelThickness: 0.012, bevelSegments: 2, curveSegments: 16 });
+  wand.rotateX(-Math.PI / 2);
+  const rumpf = new THREE.Mesh(wand, holz);
+  rumpf.position.y = -0.32;
+  const kante = new THREE.ExtrudeGeometry(aussen, { depth: 0.03, bevelEnabled: false, curveSegments: 16 });
+  kante.rotateX(-Math.PI / 2);
+  const reling = new THREE.Mesh(kante, holzHell);
+  reling.position.y = 0.12;
+  const bodenForm = new THREE.Shape(innen.getPoints(16));
+  const bodenGeo = new THREE.ShapeGeometry(bodenForm);
+  bodenGeo.rotateX(-Math.PI / 2);
+  const boden = new THREE.Mesh(bodenGeo, new THREE.MeshStandardMaterial({ color: '#1e130b', roughness: 0.8 }));
+  boden.position.y = -0.16;
+  // hoher, nach hinten gebogener Steven vorne
+  const kurve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.08, -1.5), new THREE.Vector3(0, 0.36, -1.7), new THREE.Vector3(0, 0.62, -1.68), new THREE.Vector3(0, 0.78, -1.52)]);
+  const steven = new THREE.Mesh(new THREE.TubeGeometry(kurve, 28, 0.034, 8, false), holz);
+  const knauf = new THREE.Mesh(new THREE.SphereGeometry(0.042, 12, 10), messing);
+  knauf.position.set(0, 0.78, -1.52);
+  // Bänke
+  const bank1 = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.05, 0.22), holzHell);
+  bank1.position.set(0, 0.0, -0.32);
+  const bank2 = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.05, 0.22), holzHell);
+  bank2.position.set(0, 0.0, 0.75);
+  // Laterne auf der vorderen Bank
+  const laterne = new THREE.Group();
+  laterne.position.set(0, 0.025, -0.32);
+  const fuss = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.14), messing);
+  fuss.position.y = 0.015;
+  const glasMat = new THREE.MeshStandardMaterial({ color: '#ffd38a', emissive: '#ffae45', emissiveIntensity: 0, roughness: 0.2 });
+  const glas = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.14, 0.1), glasMat);
+  glas.position.y = 0.1;
+  laterne.add(fuss, glas);
+  for (const [x, z] of [[-0.055, -0.055], [0.055, -0.055], [-0.055, 0.055], [0.055, 0.055]]) {
+    const pfosten = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.16, 0.012), messing);
+    pfosten.position.set(x, 0.1, z);
+    laterne.add(pfosten);
+  }
+  const dach = new THREE.Mesh(new THREE.ConeGeometry(0.095, 0.07, 4), messing);
+  dach.rotation.y = Math.PI / 4;
+  dach.position.y = 0.215;
+  const griff = new THREE.Mesh(new THREE.TorusGeometry(0.028, 0.006, 6, 16), messing);
+  griff.position.y = 0.27;
+  laterne.add(dach, griff);
+  const licht = new THREE.PointLight('#ffad55', 0, 6, 1.7);
+  licht.position.y = 0.1;
+  laterne.add(licht);
+  const schein = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glut, color: '#ffb15a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+  schein.scale.setScalar(0.7);
+  schein.position.y = 0.1;
+  laterne.add(schein);
+  gruppe.add(rumpf, reling, boden, steven, knauf, bank1, bank2, laterne);
+  return { gruppe, licht, glasMat, schein, laterne };
+}
+
 // ---------- Texturen (weicher Kreis, Ring, Schatten, Glut) ----------
 function textur(zeichnen, groesse = 64) {
   const c = document.createElement('canvas');
@@ -195,29 +311,20 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
   szene.fog = new THREE.Fog(NEBEL, 16, 46);
   const SONNE = new THREE.Vector3(0.18, 0.1, -1).normalize();
 
-  // Himmel: Verlauf vom Horizont nach oben, tief stehende Abendsonne mit Schein
+  // Himmel (Shader oben: HIMMEL_FRAGMENT)
+  const himmelU = { uOben: { value: new THREE.Color('#061a35') }, uHorizont: { value: NEBEL }, uGlut: { value: new THREE.Color('#ffb877') }, uSonne: { value: SONNE }, uNacht: { value: 0 }, uZeit: { value: 0 } };
   const himmel = new THREE.Mesh(new THREE.SphereGeometry(300, 32, 16), new THREE.ShaderMaterial({
-    side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { uOben: { value: new THREE.Color('#061a35') }, uHorizont: { value: NEBEL }, uGlut: { value: new THREE.Color('#ffb877') }, uSonne: { value: SONNE } },
+    side: THREE.BackSide, depthWrite: false, fog: false, uniforms: himmelU,
     vertexShader: 'varying vec3 vR; void main() { vR = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform vec3 uOben; uniform vec3 uHorizont; uniform vec3 uGlut; uniform vec3 uSonne; varying vec3 vR;
-      void main() {
-        float y = vR.y;
-        vec3 farbe = mix(uHorizont, uOben, pow(clamp(y, 0.0, 1.0), 0.42));
-        float s = max(dot(vR, normalize(uSonne)), 0.0);
-        farbe += uGlut * (pow(s, 900.0) * 4.0 + pow(s, 40.0) * 0.45 + pow(s, 6.0) * 0.18) * (y > -0.02 ? 1.0 : 0.3);
-        farbe = mix(farbe, uHorizont, smoothstep(0.04, -0.04, y));
-        gl_FragColor = vec4(farbe, 1.0);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-      }`,
+    fragmentShader: HIMMEL_FRAGMENT,
   }));
   himmel.renderOrder = -1;
   szene.add(himmel);
 
   // Licht: Himmelslicht + tief stehende Sonne von vorne + Kantenlicht von hinten
   const lichter = new THREE.Group();
-  lichter.add(new THREE.HemisphereLight('#bfe4ff', '#0b2a4a', 1.2));
+  const hemi = new THREE.HemisphereLight('#bfe4ff', '#0b2a4a', 1.2);
+  lichter.add(hemi);
   const haupt = new THREE.DirectionalLight('#fff1dc', 2.4);
   haupt.position.set(-4, 9, 7);
   lichter.add(haupt);
@@ -242,6 +349,7 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
     uFeldHell: { value: new THREE.Color('#2a86b4') }, uFeldDunkel: { value: new THREE.Color('#0b3762') },
     uTuerkis: { value: new THREE.Color('#2fe3c2') }, uOrange: { value: new THREE.Color('#ff7a3d') }, uRot: { value: new THREE.Color('#ff3b4a') },
     uNebelNah: { value: 16 }, uNebelFern: { value: 46 }, uMarken: { value: markenTex },
+    uLaterne: { value: new THREE.Vector3() }, uLaterneKraft: { value: 0 },
   };
   const wasser = new THREE.Mesh(new THREE.PlaneGeometry(64, 64, 256, 256), new THREE.ShaderMaterial({ uniforms: U, vertexShader: WASSER_VERTEX, fragmentShader: WASSER_FRAGMENT }));
   wasser.rotation.x = -Math.PI / 2;
@@ -251,6 +359,38 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
   fern.rotation.x = -Math.PI / 2;
   fern.position.y = -0.2;
   szene.add(fern);
+
+  // ---------- Tag (Abendsonne) und Nacht (Sterne, Mond) ----------
+  const FARBEN = {
+    tag: { nebel: '#2b5a86', oben: '#061a35', glut: '#ffb877', tief: '#032039', streu: '#126a86', hOben: '#0b2546', hHor: '#3f74a3', sonne: '#ffd9a8', hell: '#2a86b4', dunkel: '#0b3762', haupt: '#fff1dc', hemi: 1.2, hauptI: 2.4, kanteI: 1.4 },
+    nacht: { nebel: '#0a1524', oben: '#010308', glut: '#a9bfe0', tief: '#010811', streu: '#0b3046', hOben: '#03070f', hHor: '#1b2c42', sonne: '#dbe6f7', hell: '#20698f', dunkel: '#08294a', haupt: '#c4d4ff', hemi: 0.8, hauptI: 1.8, kanteI: 1.0 },
+  };
+  const FT = Object.fromEntries(Object.entries(FARBEN.tag).map(([k, v]) => [k, typeof v === 'string' ? new THREE.Color(v) : v]));
+  const FN = Object.fromEntries(Object.entries(FARBEN.nacht).map(([k, v]) => [k, typeof v === 'string' ? new THREE.Color(v) : v]));
+  let nacht = 0;
+  function farbenAnwenden() {
+    const n = nacht;
+    const c = (k, ziel) => ziel.lerpColors(FT[k], FN[k], n);
+    c('nebel', NEBEL);
+    szene.fog.color.copy(NEBEL);
+    fern.material.color.copy(NEBEL);
+    c('oben', himmelU.uOben.value);
+    c('glut', himmelU.uGlut.value);
+    himmelU.uNacht.value = n;
+    c('tief', U.uTief.value); c('streu', U.uStreu.value); c('hOben', U.uHimmelOben.value); c('hHor', U.uHimmelHorizont.value);
+    c('sonne', U.uSonne.value); c('hell', U.uFeldHell.value); c('dunkel', U.uFeldDunkel.value);
+    c('haupt', haupt.color);
+    hemi.intensity = FT.hemi + (FN.hemi - FT.hemi) * n;
+    haupt.intensity = FT.hauptI + (FN.hauptI - FT.hauptI) * n;
+    kante.intensity = FT.kanteI + (FN.kanteI - FT.kanteI) * n;
+    nachtLichter(n);
+  }
+  function setzeNacht(an, animiert = true) {
+    const ziel = an ? 1 : 0;
+    if (!animiert) { nacht = ziel; farbenAnwenden(); return Promise.resolve(); }
+    const start = nacht;
+    return tween(tempo(1400), (t) => { nacht = start + (ziel - start) * glatt(t); farbenAnwenden(); });
+  }
 
   // Bojenkette um das Brett: kleine Schwimmer an jeder Feldecke, große Bojen an den Ecken
   const schwimmerPos = [];
@@ -273,20 +413,90 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
     bojen.push({ b, lampe, x, z });
   }
 
-  // ---------- Kamera ----------
+  // ---------- Kamera: Spiel-Ansicht (schräg über dem Brett) und Menü-Ansicht (im Boot mit Laterne) ----------
   const kamera = new THREE.PerspectiveCamera(48, 1, 0.1, 700);
   const blick = { azimut: 0, hoehe: THREE.MathUtils.degToRad(50), abstand: 16, ziel: new THREE.Vector3(0, 0, 0.15), beben: 0 };
   let freiraum = null;
-  function kameraSetzen() {
+  const versatz = { x: 0, y: 0 };   // Verschiebung, damit das Brett im freien Bereich zwischen den Leisten sitzt
+  let mischung = 0;                 // 0 = Menü (im Boot), 1 = Spiel (über dem Brett)
+  let leinwandB = 1;
+  let leinwandH = 1;
+  const boot = baueBoot();
+  boot.gruppe.position.set(0, 0, 66);
+  szene.add(boot.gruppe);
+  let laterneAn = 0;
+  const pose = () => ({ pos: new THREE.Vector3(), ziel: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), fov: 48, vx: 0, vy: 0 });
+  const PS = pose();
+  const PM = pose();
+  const PJ = pose();
+  const hilf = new THREE.Vector3();
+  const bogenPunkt = new THREE.Vector3();
+  function poseSpiel(o) {
     const { azimut, hoehe, abstand, ziel } = blick;
-    kamera.position.set(ziel.x + Math.sin(azimut) * Math.cos(hoehe) * abstand, ziel.y + Math.sin(hoehe) * abstand, ziel.z + Math.cos(azimut) * Math.cos(hoehe) * abstand);
-    if (blick.beben > 0) kamera.position.add(new THREE.Vector3(zufall(-1, 1), zufall(-1, 1), zufall(-1, 1)).multiplyScalar(blick.beben * 0.07));
-    kamera.lookAt(ziel);
-    lichter.rotation.y = azimut;
-    // Die Sonne steht immer vorne am Horizont (gegenüber der Kamera) -> Glitzerpfad auf dem Wasser
-    SONNE.set(0.18, 0.1, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), azimut).normalize();
+    o.pos.set(ziel.x + Math.sin(azimut) * Math.cos(hoehe) * abstand, ziel.y + Math.sin(hoehe) * abstand, ziel.z + Math.cos(azimut) * Math.cos(hoehe) * abstand);
+    o.ziel.copy(ziel);
+    o.up.set(0, 1, 0);
+    o.fov = 48;
+    o.vx = versatz.x;
+    o.vy = versatz.y;
+  }
+  function poseMenue(o) {
+    const b = boot.gruppe;
+    b.updateMatrixWorld();
+    // etwas links neben der Mitte sitzen: Boot und Laterne rechts, die Menü-Schrift links bleibt frei
+    o.pos.copy(b.localToWorld(hilf.set(-0.42, 1.02, 2.15)));
+    o.ziel.copy(b.localToWorld(hilf.set(-0.95, 1.12, -8)));
+    o.up.set(0, 1, 0).applyQuaternion(b.quaternion);
+    o.fov = 64;
+    o.vx = 0;
+    o.vy = 0;
+  }
+  let letzteProj = '';
+  function kameraSetzen() {
+    poseSpiel(PS);
+    let P = PS;
+    const k = mischung;
+    if (k < 0.9999) {
+      poseMenue(PM);
+      if (k <= 0.0001) P = PM;
+      else {
+        // Flug im Bogen über das Wasser: vom Boot zum Brett
+        bogenPunkt.copy(PM.pos).lerp(PS.pos, 0.5);
+        bogenPunkt.y = Math.max(PM.pos.y, PS.pos.y) + 4;
+        PJ.pos.copy(PM.pos).multiplyScalar((1 - k) * (1 - k)).addScaledVector(bogenPunkt, 2 * k * (1 - k)).addScaledVector(PS.pos, k * k);
+        PJ.ziel.lerpVectors(PM.ziel, PS.ziel, glatt(k));
+        PJ.up.lerpVectors(PM.up, PS.up, k).normalize();
+        PJ.fov = PM.fov + (PS.fov - PM.fov) * k;
+        PJ.vx = PS.vx * k;
+        PJ.vy = PS.vy * k;
+        P = PJ;
+      }
+    }
+    kamera.position.copy(P.pos);
+    if (blick.beben > 0) kamera.position.add(hilf.set(zufall(-1, 1), zufall(-1, 1), zufall(-1, 1)).multiplyScalar(blick.beben * 0.07));
+    kamera.up.copy(P.up);
+    kamera.lookAt(P.ziel);
+    const sig = `${P.fov.toFixed(2)}|${P.vx.toFixed(1)}|${P.vy.toFixed(1)}|${leinwandB}x${leinwandH}`;
+    if (sig !== letzteProj) {
+      letzteProj = sig;
+      kamera.fov = P.fov;
+      kamera.aspect = leinwandB / leinwandH;
+      if (P.vx || P.vy) kamera.setViewOffset(leinwandB, leinwandH, P.vx, P.vy, leinwandB, leinwandH); else kamera.clearViewOffset();
+      kamera.updateProjectionMatrix();
+    }
+    const az = blick.azimut * k;
+    lichter.rotation.y = az;
+    // Sonne/Mond steht vorne am Horizont (gegenüber der Kamera) -> Glitzerpfad auf dem Wasser
+    SONNE.set(0.18, 0.1 + nacht * 0.05, -1).applyAxisAngle(hilf.set(0, 1, 0), az).normalize();
     U.uLicht.value.copy(SONNE);
     himmel.position.copy(kamera.position);
+    // Nebel: im Menü weit, über dem Brett wie berechnet
+    const nah = 12 + (blick.abstand + 4 - 12) * k;
+    const fern = 44 + (blick.abstand + 34 - 44) * k;
+    U.uNebelNah.value = nah;
+    U.uNebelFern.value = fern;
+    szene.fog.near = nah;
+    szene.fog.far = fern;
   }
   const PROBE = [];
   for (const x of [-4.45, 4.45]) for (const z of [-4.45, 4.45]) PROBE.push(new THREE.Vector3(x, 0, z), new THREE.Vector3(x * 0.92, 0.8, z * 0.92));
@@ -306,33 +516,31 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
     const w = huelle.clientWidth;
     const h = huelle.clientHeight;
     if (!w || !h) return;
+    leinwandB = w;
+    leinwandH = h;
     renderer.setSize(w, h, false);
     kamera.aspect = w / h;
+    kamera.fov = 48;
     kamera.clearViewOffset();
     kamera.updateProjectionMatrix();
     const fr = freiraum || { x: 0, y: 0, w, h };
     const merk = blick.azimut;
     blick.azimut = 0;
+    const probe = () => { poseSpiel(PS); kamera.position.copy(PS.pos); kamera.up.set(0, 1, 0); kamera.lookAt(PS.ziel); kamera.updateMatrixWorld(); return rahmen(w, h); };
     let lo = 4;
     let hi = 140;
     for (let i = 0; i < 30; i++) {
       blick.abstand = (lo + hi) / 2;
-      kameraSetzen();
-      kamera.updateMatrixWorld();
-      const r = rahmen(w, h);
+      const r = probe();
       if (r.maxX - r.minX <= fr.w * 0.98 && r.maxY - r.minY <= fr.h * 0.98) hi = blick.abstand; else lo = blick.abstand;
     }
     blick.abstand = hi;
-    kameraSetzen();
-    kamera.updateMatrixWorld();
-    const r = rahmen(w, h);
-    kamera.setViewOffset(w, h, (r.minX + r.maxX) / 2 - (fr.x + fr.w / 2), (r.minY + r.maxY) / 2 - (fr.y + fr.h / 2), w, h);
+    const r = probe();
+    versatz.x = (r.minX + r.maxX) / 2 - (fr.x + fr.w / 2);
+    versatz.y = (r.minY + r.maxY) / 2 - (fr.y + fr.h / 2);
     blick.azimut = merk;
+    letzteProj = '';
     kameraSetzen();
-    U.uNebelNah.value = blick.abstand + 4;
-    U.uNebelFern.value = blick.abstand + 34;
-    szene.fog.near = blick.abstand + 4;
-    szene.fog.far = blick.abstand + 34;
   }
 
   // ---------- Beschriftung (a–h, 1–8) ----------
@@ -902,15 +1110,90 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
       s.m.scale.setScalar(Math.max(0.001, s.groesse + s.wachsen * Math.sqrt(k)));
       s.m.material.opacity = s.deckkraft * (1 - k) * Math.min(1, k * 8);
     }
+    // Menü-Boot schaukelt auf den Wellen, die Laterne flackert
+    if (mischung < 0.999) {
+      const bp = boot.gruppe.position;
+      bp.y = hoehe(bp.x, bp.z) * 1.6 + Math.sin(t * 0.9) * 0.025;
+      boot.gruppe.rotation.x = Math.atan2(hoehe(bp.x, bp.z - 1.2) - hoehe(bp.x, bp.z + 1.2), 2.4) * 2.2 + Math.sin(t * 0.7) * 0.018;
+      boot.gruppe.rotation.z = Math.atan2(hoehe(bp.x + 0.7, bp.z) - hoehe(bp.x - 0.7, bp.z), 1.4) * 2 + Math.sin(t * 0.55 + 1) * 0.022;
+      const flackern = laterneAn * (0.86 + Math.sin(t * 13.1) * 0.06 + Math.sin(t * 7.3 + 1) * 0.05 + Math.sin(t * 23.7) * 0.03);
+      boot.licht.intensity = flackern * 1.5;
+      boot.glasMat.emissiveIntensity = flackern * 3;
+      boot.schein.material.opacity = flackern * 0.85;
+      boot.laterne.getWorldPosition(U.uLaterne.value);
+      U.uLaterne.value.y += 0.1;
+    }
+    U.uLaterneKraft.value = laterneAn * (1 - mischung) * (0.9 + Math.sin(t * 13.1) * 0.05);
+    // Sternschnuppen in der Nacht
+    naechsteSchnuppe -= dt;
+    if (nacht > 0.5 && naechsteSchnuppe <= 0) { naechsteSchnuppe = zufall(4, 10); sternschnuppe(); }
     U.uZeit.value = t;
+    himmelU.uZeit.value = t;
     kameraSetzen();
+    // Das Wasser-Netz wandert mit der Kamera mit (die Wellen selbst bleiben fest in der Welt)
+    wasser.position.set(Math.round(kamera.position.x / 0.25) * 0.25, 0, Math.round((kamera.position.z - 22) / 0.25) * 0.25);
+    fern.position.set(kamera.position.x, -0.2, kamera.position.z);
     U.uKamera.value.copy(kamera.position);
     renderer.render(szene, kamera);
   }
+  let naechsteSchnuppe = 3;
+  function sternschnuppe() {
+    const vor = new THREE.Vector3();
+    kamera.getWorldDirection(vor);
+    vor.y = 0;
+    vor.normalize();
+    const seite = new THREE.Vector3(-vor.z, 0, vor.x);
+    const start = kamera.position.clone().addScaledVector(vor, 160).addScaledVector(seite, zufall(-70, 70));
+    start.y += zufall(45, 95);
+    const weg = seite.clone().multiplyScalar(zufall(0, 1) > 0.5 ? 1 : -1).add(new THREE.Vector3(0, -0.5, 0)).normalize().multiplyScalar(zufall(45, 75));
+    const geo = new THREE.BufferGeometry().setFromPoints([start, start.clone()]);
+    const linie = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: '#eaf2ff', transparent: true, opacity: 1, fog: false, depthWrite: false }));
+    szene.add(linie);
+    const kopf = new THREE.Vector3();
+    const schwanz = new THREE.Vector3();
+    tween(750, (k) => {
+      kopf.copy(start).addScaledVector(weg, k);
+      schwanz.copy(start).addScaledVector(weg, Math.max(0, k - 0.3));
+      geo.setFromPoints([schwanz, kopf]);
+      linie.material.opacity = Math.sin(Math.PI * k);
+    }).then(() => { szene.remove(linie); geo.dispose(); linie.material.dispose(); });
+  }
+  // Feuerwerk über dem Brett (beim Sieg)
+  function feuerwerk(anzahl = 8) {
+    const farben = ['#2fe3c2', '#ffd56b', '#ff6a8a', '#8fd0ff', '#ffffff', '#b892ff', '#ff9a4a'];
+    for (let i = 0; i < anzahl; i++) {
+      setTimeout(() => {
+        const p = new THREE.Vector3(zufall(-4, 4), zufall(4.5, 8), zufall(-6, 0));
+        const farbe = farben[i % farben.length];
+        // Aufstieg: kleiner Funke von unten
+        const start = new THREE.Vector3(p.x + zufall(-1, 1), 0.2, p.z + 2);
+        flug(start, p, 520, 0, (q) => { if (Math.random() < 0.8) teilchenNeu(q.clone(), { farbe: '#ffe0a0', groesse: 0.08, wachsen: -0.05, leben: 0.5, additiv: true, deckkraft: 0.9 }); }).then(() => {
+          ereignis('feuerwerk');
+          teilchenNeu(p.clone(), { farbe: '#ffffff', groesse: 0.9, wachsen: 1.6, leben: 0.25, additiv: true, tex: TEX.glut, deckkraft: 1 });
+          for (let j = 0; j < 44; j++) {
+            const v = new THREE.Vector3(zufall(-1, 1), zufall(-1, 1), zufall(-1, 1)).normalize().multiplyScalar(zufall(2.2, 3.3));
+            teilchenNeu(p.clone(), { farbe, groesse: 0.17, wachsen: -0.1, leben: zufall(1.0, 1.7), v, schwerkraft: 1.7, deckkraft: 1, additiv: true });
+          }
+          blitzLicht.position.copy(p);
+          tween(500, (k) => { blitzLicht.intensity = (1 - k) * 9; });
+        });
+      }, i * 420);
+    }
+  }
+  // Menü <-> Spiel: die Kamera fliegt vom Boot zum Brett (und zurück)
+  function modus(name, animiert = true) {
+    const ziel = name === 'spiel' ? 1 : 0;
+    if (!animiert) { mischung = ziel; return Promise.resolve(); }
+    if (Math.abs(mischung - ziel) < 0.001) return Promise.resolve();
+    const start = mischung;
+    return tween(tempo(ziel ? 2400 : 1600), (k) => { mischung = start + (ziel - start) * glatt(k); });
+  }
+  function zuenden() { const s = laterneAn; return tween(1100, (k) => { laterneAn = Math.max(s, Math.min(1, k * k * 1.2 + (Math.random() < 0.3 ? -0.2 : 0))); }).then(() => { laterneAn = 1; }); }
   renderer.setAnimationLoop(bild);
 
   new ResizeObserver(() => passe()).observe(huelle);
   beschriften();
+  farbenAnwenden();
   passe();
 
   return {
@@ -922,6 +1205,7 @@ export function erstelleBuehne(huelle, { tempo = (ms) => ms, ereignis = () => {}
     setzeKoordinaten(an) { beschriftung.visible = an; },
     setzeFlotten(w, b) { setzeFlotte('w', w); setzeFlotte('b', b); },
     aufbauen, zug, attacke, markiere, treffer, hebe, ziehe, zurueck, loslassen,
+    modus, setzeNacht, zuenden, feuerwerk,
     // alle Schiffe gegen den neuen Satz tauschen (mit Glitzer, nacheinander)
     tauscheSchiffe() { [...alle].filter((e) => !e.sinkt).forEach((e, i) => setTimeout(() => verwandle(e, e.typ), i * 45)); },
     aktiv(an) { aktiv = an; if (an) letzteZeit = performance.now(); },

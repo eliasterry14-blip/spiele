@@ -472,3 +472,40 @@ svg { display: block; }
   .figur svg, .wasser, .wasser::after, .welle, .wellen::after, .leuchtfeuer, .sterne i, .logo-schiff svg { animation: none !important; }
 }
 #app.ruhig .figur svg, #app.ruhig .wasser, #app.ruhig .wasser::after { animation: none; }
+
+/* =====================================================================
+   STARTMENÜ IM KENA-STIL (3D-Nachtszene dahinter) + STARTBILDSCHIRM
+   ===================================================================== */
+#app { background: #02060c; }
+.vignette { position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(125% 85% at 50% 42%, transparent 52%, rgba(0, 0, 0, .6) 100%); }
+#s-menue, #s-spiel { background: none; }
+#s-wahl, #s-einst { background: rgba(2, 8, 16, .74); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.km-titel { position: absolute; left: 8vw; right: 8vw; top: calc(var(--oben) + var(--vh) * 8); pointer-events: none; }
+.km-titel h1, .km-titel p, .km-punkt, .intro-name { font-family: "Didot", "Bodoni 72", "Bodoni MT", "Palatino", "Palatino Linotype", "Book Antiqua", "Georgia", serif; font-variant: small-caps; font-weight: 400; }
+.km-titel h1 { font-size: clamp(48px, 15.5vw, 74px); line-height: .88; letter-spacing: .01em; color: #f4ecdc;
+  text-shadow: 0 0 26px rgba(255, 196, 120, .28), 0 2px 18px rgba(0, 0, 0, .65);
+  opacity: 0; transform: translateY(12px); filter: blur(7px); transition: opacity 1.5s ease, transform 1.5s ease, filter 1.5s ease; }
+.km-titel p { margin-top: 12px; font-size: clamp(15px, 4.6vw, 20px); letter-spacing: .14em; color: #e9cf9f; opacity: 0; transition: opacity 1.5s .4s; }
+#s-menue.da .km-titel h1 { opacity: 1; transform: none; filter: none; }
+#s-menue.da .km-titel p { opacity: .92; }
+.km-liste { position: absolute; left: 8vw; bottom: calc(var(--unten) + var(--vh) * 12); display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.km-punkt { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 48px; padding: 4px 22px 4px 0;
+  text-align: left; font-size: clamp(22px, 6.6vw, 28px); letter-spacing: .04em; color: rgba(244, 236, 220, .88); text-shadow: 0 2px 12px rgba(0, 0, 0, .75);
+  opacity: 0; transform: translateX(-16px);
+  transition: opacity .9s ease calc(.45s + var(--i) * .12s), transform .9s cubic-bezier(.2, .8, .2, 1) calc(.45s + var(--i) * .12s), color .15s, text-shadow .15s; }
+#s-menue.da .km-punkt { opacity: 1; transform: none; }
+.km-punkt small { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-variant: normal; font-size: 12px; letter-spacing: .02em; color: rgba(233, 207, 159, .72); margin-top: -2px; }
+.km-punkt::before { content: ""; position: absolute; left: -17px; top: 24px; width: 7px; height: 7px; margin-top: -3.5px; background: #ffc26b;
+  box-shadow: 0 0 12px 3px rgba(255, 170, 80, .75); transform: rotate(45deg) scale(0); transition: transform .18s; }
+.km-punkt:active { color: #ffe3b0; text-shadow: 0 0 18px rgba(255, 180, 90, .85); }
+.km-punkt:active::before { transform: rotate(45deg) scale(1); }
+.km-version { position: absolute; right: 6vw; bottom: calc(var(--unten) + 16px); font-size: 11px; letter-spacing: .08em; color: rgba(233, 225, 210, .45); opacity: 0; transition: opacity 1s 1.3s; }
+#s-menue.da .km-version { opacity: 1; }
+/* Startbildschirm */
+.intro { position: absolute; inset: 0; z-index: 90; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; transition: opacity 1.3s ease; }
+.intro.weg { opacity: 0; pointer-events: none; }
+.intro-emblem { width: min(34vw, 140px); aspect-ratio: 200 / 262; filter: drop-shadow(0 0 16px rgba(47, 227, 194, .3)) drop-shadow(0 0 2px rgba(255, 255, 255, .5)); }
+.intro-emblem svg { width: 100%; height: 100%; overflow: visible; }
+.intro-name { font-size: 25px; letter-spacing: .3em; padding-left: .3em; color: #efe6d3; opacity: 0; animation: intro-name 1.4s 1.05s ease forwards; }
+@keyframes intro-name { from { opacity: 0; letter-spacing: .62em; } to { opacity: 1; letter-spacing: .3em; } }

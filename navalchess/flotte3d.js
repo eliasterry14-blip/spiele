@@ -27,6 +27,12 @@ export function material(farbe) {
   if (!MATERIAL[farbe]) MATERIAL[farbe] = neueMaterialien();
   return MATERIAL[farbe];
 }
+// Nachts leuchten auch die Fenster der weißen Flotte warm
+let nachtStaerke = 0;
+export function nachtLichter(n) {
+  nachtStaerke = n;
+  for (const f of ['w', 'b']) if (tintFarbe[f]?.hell) material(f).fenster.emissiveIntensity = n * 1.7;
+}
 // Flotten-Farben setzen (aus den Einstellungen) – alle Schiffe der Seite ändern sich sofort
 export function setzeFlotte(farbe, stil) {
   const f = farbsatz(stil, farbe);
@@ -40,7 +46,8 @@ export function setzeFlotte(farbe, stil) {
   m.akzent.emissive.set(f.akzent);
   m.akzent.emissiveIntensity = 0.9;
   m.fenster.color.set(f.fenster);
-  m.fenster.emissive.set(f.hell ? '#000000' : f.fenster);
+  m.fenster.emissive.set(f.hell ? '#ffc46b' : f.fenster);
+  m.fenster.emissiveIntensity = f.hell ? nachtStaerke * 1.7 : 1.2;
   m.ring.color.set(f.akzent);
   for (const t of Object.values(tints[farbe])) t.color.set(f.hell ? '#ffffff' : f.rumpf);
   tintFarbe[farbe] = f;
@@ -262,8 +269,9 @@ export const SAETZE = {
     q: { datei: 'modelle/spass/q.glb', laenge: 0.96, drehen: -Math.PI / 2, name: 'Piratenschiff' },
     r: { datei: 'modelle/spass/r.glb', laenge: 0.84, drehen: 0, name: 'Kogge' },
     b: { datei: 'modelle/spass/b.glb', laenge: 0.82, drehen: -Math.PI / 2, name: 'Schlepper' },
-    n: { datei: 'modelle/spass/n.glb', laenge: 0.62, drehen: 0, name: 'Schlauchboot' },
-    p: { datei: 'modelle/spass/p.glb', laenge: 0.56, drehen: 0, name: 'Segelboot' },
+    // flache Boote liegen höher (sonst verschwinden sie in den Wellen)
+    n: { datei: 'modelle/spass/n.glb', laenge: 0.62, drehen: 0, tiefgang: -0.04, name: 'Schlauchboot' },
+    p: { datei: 'modelle/spass/p.glb', laenge: 0.56, drehen: 0, tiefgang: -0.025, name: 'Segelboot' },
   },
 };
 const modelle = { spass: {} };    // Satz -> typ -> fertig ausgerichtetes Modell

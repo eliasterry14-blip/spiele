@@ -65,7 +65,11 @@ function zeige(id, zurueck = false) {
   neu.classList.add('aktiv');
   aktuelleSeite = neu;
   if (id === 's-menue') menueInfo();
-  if (buehne) { buehne.aktiv(id === 's-spiel'); if (id === 's-spiel') requestAnimationFrame(passeFreiraum); }
+  // Kamera: Spiel = über dem Brett, Menü = im Boot (Einstellungen/Auswahl lassen sie, wo sie ist)
+  if (buehne) {
+    if (id === 's-spiel') { requestAnimationFrame(passeFreiraum); buehne.modus('spiel'); }
+    if (id === 's-menue') buehne.modus('menue');
+  }
 }
 
 function menueInfo() {
@@ -113,6 +117,10 @@ function zeigeEinstellungen() {
     </div>
     <div class="einst-gruppe"><h3 class="einst-titel">Weiße Flotte</h3>${flotten('w')}</div>
     <div class="einst-gruppe"><h3 class="einst-titel">Schwarze Flotte</h3>${flotten('b')}</div>
+    <div class="einst-gruppe"><h3 class="einst-titel">Himmel</h3>
+      <div class="segment kamera">${[['tag', 'Abendsonne', 'Hell & warm'], ['nacht', 'Sternennacht', 'Sterne & Laternen']].map(([w, n, k]) =>
+        `<button class="${(e.nacht !== false ? 'nacht' : 'tag') === w ? 'an' : ''}" data-aktion="himmel" data-wert="${w}"><b>${n}</b><small>${k}</small></button>`).join('')}</div>
+    </div>
     <div class="einst-gruppe"><h3 class="einst-titel">Kamera</h3>
       <div class="segment kamera">${[['flach', 'Seite'], ['mittel', 'Schräg'], ['steil', 'Oben']].map(([w, n]) =>
         `<button class="${(e.blick || 'flach') === w ? 'an' : ''}" data-aktion="blick" data-wert="${w}"><b>${n}</b><small>${BLICK[w]}°</small></button>`).join('')}</div>
@@ -199,7 +207,8 @@ function stelleBuehneBereit() {
 // Der freie Bereich zwischen den Spieler-Leisten: dort soll das ganze Brett hineinpassen
 function passeFreiraum() {
   if (!buehne) return;
-  const a = $('#buehne').getBoundingClientRect();
+  // relativ zur Spiel-Seite messen (die gleitet beim Wechsel kurz zur Seite – das darf nicht mitzählen)
+  const a = $('#s-spiel').getBoundingClientRect();
   const r = $('#brett-zelle').getBoundingClientRect();
   if (!r.width || !r.height) return;
   buehne.setzeFreiraum({ x: r.left - a.left, y: r.top - a.top, w: r.width, h: r.height });
@@ -240,6 +249,7 @@ function ruf(text, art = '') {
 // Was auf der Bühne passiert (Abschuss, Einschlag) -> Klang + Vibration
 function buehnenEreignis(name) {
   if (name === 'explosion') { klang.explosion(); vibriere([30, 40, 70]); }
+  if (name === 'feuerwerk') klang.kanone();
   if (name === 'spritzer') klang.schlag();
 }
 
@@ -540,7 +550,7 @@ function zeigeEnde() {
   $('#ende-titel').className = 'ende-titel' + (ergebnis === 'sieg' ? ' sieg' : '');
   $('#ende-text').textContent = text;
   $('#ende').hidden = false;
-  if (ergebnis === 'sieg') { klang.sieg(); funken(); } else if (ergebnis === 'verloren') klang.niederlage(); else klang.remis();
+  if (ergebnis === 'sieg') { klang.sieg(); funken(); buehne?.feuerwerk(); } else if (ergebnis === 'verloren') klang.niederlage(); else klang.remis();
   vibriere(ergebnis === 'sieg' ? [30, 50, 30, 50, 80] : 60);
 }
 
@@ -805,6 +815,11 @@ document.addEventListener('click', (e) => {
       wechsleSatz(daten.einst.satz);
       zeigeEinstellungen();
       break;
+    case 'himmel':
+      daten.einst.nacht = k.dataset.wert === 'nacht'; speichere(); klang.wahl();
+      buehne?.setzeNacht(daten.einst.nacht);
+      zeigeEinstellungen();
+      break;
     case 'blick':
       daten.einst.blick = k.dataset.wert; speichere(); klang.wahl();
       buehne?.setzeBlickwinkel(BLICK[daten.einst.blick]);
@@ -846,20 +861,28 @@ function start() {
   window.addEventListener('resize', setzeVh);
   tonAn(daten.einst.ton);
   if (daten.einst.satz !== 'kriegs') wechsleSatz(daten.einst.satz);
-  // Sterne am Himmel
-  $('#sterne').innerHTML = Array.from({ length: 46 }, () =>
-    `<i style="left:${zufall(0, 100).toFixed(1)}%;top:${zufall(0, 92).toFixed(1)}%;--d:${zufall(-3, 0).toFixed(2)}s;opacity:${zufall(0.25, 0.8).toFixed(2)}"></i>`).join('');
-  $('#logo-schiff').innerHTML = schiffSVG('k', 'w', daten.einst.flotteW);
   for (const s of document.querySelectorAll('.fw-schiff')) s.innerHTML = schiffSVG('k', s.dataset.farbe, stilVon(s.dataset.farbe));
-  // Start-Animation; erster Tipp überspringt sie
+  // 3D-Bühne gleich zu Beginn: im Menü sitzt man im Boot mit der Laterne
+  if (stelleBuehneBereit()) { buehne.modus('menue', false); buehne.setzeNacht(daten.einst.nacht !== false, false); }
   const menue = $('#s-menue');
   menue.classList.add('aktiv');
   aktuelleSeite = menue;
   menueInfo();
-  introBis = performance.now() + 1500;
-  const introFertig = () => { menue.classList.add('gesehen'); introBis = Math.min(introBis, performance.now() + 250); };
-  menue.addEventListener('pointerdown', () => { wecken(); if (performance.now() < introBis) introFertig(); }, { once: false });
-  setTimeout(introFertig, 2600);
+  // Startbildschirm: Emblem zeichnet sich, dann geht die Laterne an und das Menü erscheint. Tippen überspringt.
+  const intro = $('#intro');
+  let introVorbei = false;
+  introBis = Infinity;
+  const introFertig = () => {
+    if (introVorbei) return;
+    introVorbei = true;
+    intro.classList.add('weg');
+    buehne?.zuenden();
+    setTimeout(() => menue.classList.add('da'), 350);
+    introBis = performance.now() + 700;
+    setTimeout(() => intro.remove(), 1500);
+  };
+  intro.addEventListener('pointerdown', () => { wecken(); introFertig(); });
+  setTimeout(introFertig, 2900);
   if ('serviceWorker' in navigator && !location.search.includes('nosw')) navigator.serviceWorker.register('sw.js').catch(() => {});
   if (TEST) window.__nc = { get buehne() { return buehne; }, spiel, daten, neuesSpiel, fortsetzen, zeige, zeigeEinstellungen, zeigeWahl, fuehreAus, waehle, feuerUmschalten, zeigeEnde, setzeAusrichtung, intro: introFertig };
 }
