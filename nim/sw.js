@@ -1,4 +1,4 @@
 // Offline-Speicher für NIM. Bei jedem Update die Nummer hochzählen!
-self.VERSION = 'nim-1';
-self.EIGENE = ['spiel.js', 'spiel.css', 'logik.js'];
+self.VERSION = 'nim-2';
+self.EIGENE = ['spiel.js', 'spiel.css', 'logik.js', 'ton/zisch.wav', 'ton/brennen.wav'];
 importScripts('../gemeinsam/sw-kern.js');

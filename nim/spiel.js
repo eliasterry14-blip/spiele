@@ -2,6 +2,10 @@
 import { starteApp } from '../gemeinsam/rahmen.js';
 import { baueBrett } from '../gemeinsam/brett.js';
 import { kiZug, gewinnstellung, summe } from './logik.js';
+import { ladeKlaenge } from '../gemeinsam/ton.js';
+
+// Kenney-Sounds (CC0): Streichholz anreißen + abbrennen
+ladeKlaenge({ zisch: 'ton/zisch.wav', brennen: 'ton/brennen.wav' });
 
 const HOLZ = `<svg viewBox="0 0 24 130"><defs>
   <linearGradient id="hz" x1="0" x2="1"><stop offset="0" stop-color="#6b4320"/><stop offset=".45" stop-color="#e8c38c"/><stop offset="1" stop-color="#7a4f26"/></linearGradient>
@@ -68,9 +72,9 @@ starteApp({
     b.beiTipp((x, y) => {
       if (sperre || (!zwei && dran === 1)) return;
       if (x >= reihen[y]) { wahl = null; zeigeStand(); return; }
-      if (wahl && wahl.reihe === y && wahl.ab === x) wahl = null;
-      else wahl = { reihe: y, ab: x };
-      k.ton.klick(); zeigeStand();
+      if (wahl && wahl.reihe === y && wahl.ab === x) { wahl = null; k.ton.klick(); }
+      else { wahl = { reihe: y, ab: x }; k.ton.spiele('zisch', { laut: 0.6 }) || k.ton.klick(); }
+      zeigeStand();
     });
 
     async function ziehe(reihe, anzahl, wer) {
@@ -84,8 +88,9 @@ starteApp({
       const ab = reihen[reihe] - anzahl;
       const weg = hoelzer[reihe].slice(ab, reihen[reihe]);
       weg.forEach((h) => h.classList.add('an'));
+      if (wer === 1 && !zwei) k.ton.spiele('zisch', { laut: 0.5 });
       await k.warte(wer === 1 && !zwei ? 650 : 180);
-      k.ton.setzen();
+      k.ton.spiele('brennen', { laut: 0.7, tempo: 0.8 }) || k.ton.setzen();
       weg.forEach((h, i) => { h.style.animationDelay = `${i * 70}ms`; h.classList.add('brennt'); });
       reihen[reihe] = ab; wahl = null; zuege++; if (wer === 0) verbrannt += anzahl;
       await k.warte(500 + weg.length * 70);

@@ -2,7 +2,8 @@
 // Wichtig: Alle 10 Spiele (und BLACK ACE) liegen auf derselben Adresse und teilen sich den Speicher.
 // Darum löscht jedes Spiel NUR seine eigenen alten Versionen (gleicher Vorname), nie die der anderen.
 const VORNAME = self.VERSION.split('-')[0] + '-';
-const GEMEINSAM = ['stil.css', 'rahmen.js', 'cover.js', 'ton.js', 'brett.js'];
+const GEMEINSAM = ['stil.css', 'rahmen.js', 'cover.js', 'ton.js', 'brett.js',
+  ...['klick', 'wahl', 'setzen', 'gut', 'schlecht', 'gegner', 'sieg', 'niederlage', 'seite'].map((n) => `ton/${n}.wav`)];
 const DATEIEN = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png', ...self.EIGENE, ...GEMEINSAM.map((d) => '../gemeinsam/' + d)];
 
 self.addEventListener('install', (e) => {

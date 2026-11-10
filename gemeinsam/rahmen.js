@@ -160,6 +160,7 @@ export function starteApp(def) {
     }
     app.classList.remove('im-gold', 'im-signal', 'im-spiel');
     if (KLASSE[id]) app.classList.add(KLASSE[id]);
+    if (introVorbei) ton.seite();
     neu.classList.add('an', 'rein');
     aktuell = neu;
     if (id === 's-spiel') cover.stop(); else cover.start();
@@ -380,6 +381,7 @@ export function starteApp(def) {
 
     const titel = erg.titel || (erg.sieg === true ? 'SIEG' : erg.sieg === false ? 'NIEDERLAGE' : 'REMIS');
     const et = $('#e-titel'); et.textContent = titel; et.className = `e-titel ${erg.sieg === false && modusJetzt !== 'zwei' ? 'niederlage' : 'sieg'}`;
+    et.style.setProperty('--n', Math.max(5, titel.length));
     const sterne = modusJetzt === 'ki' && erg.sieg === true ? Math.max(1, Math.min(3, erg.sterne || 1)) : 0;
     $('#e-sterne').innerHTML = modusJetzt === 'ki' ? [1, 2, 3].map((i) => I.stern.replace('<svg', `<svg class="${i <= sterne ? 'an' : ''}" style="--i:${i}"`)).join('') : '';
     $('#e-werte').innerHTML = (erg.werte || []).map(([a, b]) => `<div><b>${b}</b><small>${a.toUpperCase()}</small></div>`).join('');
